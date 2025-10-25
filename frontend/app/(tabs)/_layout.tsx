@@ -2,10 +2,15 @@ import { Tabs } from "expo-router";
 
 export default function TabsLayout() {
   return (
-    <Tabs>
-      <Tabs.Screen name="dashboard" options={{ title: "Dashboard" }} />
-      <Tabs.Screen name="login" options={{ title: "Login" }} />
-      <Tabs.Screen name="register" options={{ title: "Register" }} />
+    <Tabs
+      screenOptions={{
+        headerShown: false,
+        tabBarStyle: { display: "none" },
+      }}
+    >
+      <Tabs.Screen name="dashboard" />
+      <Tabs.Screen name="login" />
+      <Tabs.Screen name="register" />
     </Tabs>
   );
 }
