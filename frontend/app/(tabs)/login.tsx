@@ -10,9 +10,9 @@ export default function Login() {
 
   const handleLogin = () => {
     if (username === "test" && password === "test") {
-      router.push("/dashboard");
+      router.replace("/(tabs)/dashboard");
     } else {
-      Alert.alert("Invalid credentials", "Try username: test, password: test");
+      Alert.alert("Invalid credentials");
     }
   };
 
@@ -105,20 +105,11 @@ export default function Login() {
           </Text>
         </Pressable>
 
-        <Pressable
-          onPress={() => router.push("/register")}
-          style={{ marginTop: 16 }}
-        >
-          <Text
-            style={{
-              textAlign: "center",
-              color: Colors.accent,
-              fontWeight: "500",
-            }}
-          >
-            Don’t have an account? Register
-          </Text>
-        </Pressable>
+      <Pressable onPress={() => router.push("/(tabs)/register")} style={{ marginTop: 16 }}>
+        <Text style={{ textAlign: "center", color: Colors.accent, fontWeight: "500" }}>
+          Don’t have an account? Register
+        </Text>
+      </Pressable>
 
         <Text
           style={{
