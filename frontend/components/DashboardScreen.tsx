@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { View, Text, TextInput, Pressable, ScrollView, Animated, Easing } from "react-native";
 import { useRouter } from "expo-router";
-import { Colors } from "../../constants/theme";
+import { Colors } from "@/constants/theme";
 import type { Task, Status } from "./types";
 
 type Props = {
@@ -10,7 +10,9 @@ type Props = {
   tasks: Task[];
   loading?: boolean;
   onAddTask?: (title: string) => void;
-  onSelectTask?: (taskId: Task["id"]) => void;
+  onSelectTask?: (taskId: Task["id"]) => void;        // tap card cycles status
+  onEditTask?: (taskId: Task["id"], title: string) => void;  
+  onDeleteTask?: (taskId: Task["id"]) => void;               
   currentUserInitials?: string;
   titleOverride?: string;
 };
@@ -66,12 +68,9 @@ export default function DashboardScreen({
   const headerTitle = titleOverride ?? (mode === "personal" ? "My Tasks" : `Team Tasks · ${teamId ?? ""}`);
 
   const drawerItems = [
-    { label: "Dashboard (Personal)", href: "/(tabs)/dashboard" },
-    teamId ? { label: `This Team · ${teamId}`, href: `/(tabs)/dashboard/${teamId}` } : null,
-    { label: "Teams", href: "/(tabs)/teams" },
-    { label: "Settings", href: "/(tabs)/settings" },
+    { label: "Dashboard", href: "/(tabs)/dashboard" },
     { label: "Sign Out", href: "/(tabs)/login" },
-  ].filter(Boolean) as { label: string; href: string }[];
+  ];
 
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
@@ -96,9 +95,6 @@ export default function DashboardScreen({
           <Text style={{ color: "white", fontWeight: "600" }}>+ New Task</Text>
         </Pressable>
 
-        <Pressable onPress={() => router.push("/(tabs)/teams")} aria-label="Profile" style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: "#0EA5E9", alignItems: "center", justifyContent: "center", marginLeft: 8 }}>
-          <Text style={{ color: "white", fontWeight: "700" }}>{currentUserInitials}</Text>
-        </Pressable>
       </View>
 
       {/* Filters */}
@@ -161,6 +157,35 @@ export default function DashboardScreen({
                     <Text style={{ color: statusColor(t.status), fontWeight: "600" }}>{t.status}</Text>
                   </View>
 
+                  <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
+                    {/* Edit */}
+                    <Pressable
+                      onPress={() => {
+                        // lightweight inline prompt using window.prompt on web; for native, quick fallback
+                        // @ts-ignore
+                        const suggested = (typeof window !== "undefined" && window.prompt)
+                          ? // @ts-ignore
+                            window.prompt("Edit task title", t.title)
+                          : null;
+
+                        if (suggested != null && suggested.trim()) {
+                          onEditTask?.(t.id, suggested.trim());
+                        }
+                      }}
+                      style={{ paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderColor: Colors.border, borderRadius: 6, backgroundColor: "#fff" }}
+                    >
+                      <Text style={{ color: Colors.text }}>Edit</Text>
+                    </Pressable>
+
+                    {/* Delete */}
+                    <Pressable
+                      onPress={() => onDeleteTask?.(t.id)}
+                      style={{ paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderColor: "#ef4444", borderRadius: 6, backgroundColor: "#fff" }}
+                    >
+                      <Text style={{ color: "#ef4444" }}>Delete</Text>
+                    </Pressable>
+                  </View>
+
                   <View style={{ flexDirection: "row", gap: 12, marginTop: 6 }}>
                     {t.due && <Text style={{ color: Colors.icon }}>📅 {t.due}</Text>}
                     {t.category && <Text style={{ color: Colors.text, backgroundColor: "#F1F5F9", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 }}>{t.category}</Text>}
@@ -173,10 +198,6 @@ export default function DashboardScreen({
 
         {/* Right rail placeholders */}
         <View style={{ width: 340, gap: 16 }}>
-          <View style={{ backgroundColor: Colors.surface, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, padding: 12 }}>
-            <Text style={{ color: Colors.text, fontWeight: "700", marginBottom: 8 }}>Calendar</Text>
-            <Text style={{ color: Colors.secondary }}>Mini calendar placeholder</Text>
-          </View>
           <View style={{ flexDirection: "row", gap: 12 }}>
             {[
               { label: "Due Today", value: filtered.filter((t) => t.due === new Date().toISOString().slice(0, 10)).length },
