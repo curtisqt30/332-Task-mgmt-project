@@ -11,7 +11,7 @@ type Props = {
   loading?: boolean;
   onAddTask?: (title: string) => void;
   onSelectTask?: (taskId: Task["id"]) => void;        // tap card cycles status
-  onEditTask?: (taskId: Task["id"], title: string) => void;  
+  onEditTask?: (taskId: Task["id"], patch: Partial<Task>) => void;  
   onDeleteTask?: (taskId: Task["id"]) => void;               
   currentUserInitials?: string;
   titleOverride?: string;
@@ -163,7 +163,6 @@ export default function DashboardScreen({
                     {/* Edit */}
                     <Pressable
                       onPress={() => {
-                        // lightweight inline prompt using window.prompt on web; for native, quick fallback
                         // @ts-ignore
                         const suggested = (typeof window !== "undefined" && window.prompt)
                           ? // @ts-ignore
@@ -171,13 +170,41 @@ export default function DashboardScreen({
                           : null;
 
                         if (suggested != null && suggested.trim()) {
-                          onEditTask?.(t.id, suggested.trim());
+                          onEditTask?.(t.id, { title: suggested.trim() } );
                         }
                       }}
                       style={{ paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderColor: Colors.border, borderRadius: 6, backgroundColor: "#fff" }}
                     >
                       <Text style={{ color: Colors.text }}>Edit</Text>
                     </Pressable>
+
+                    {/* Edit Description + Due Date */}
+                    <Pressable
+                      onPress={() => {
+                        // Description
+                        // @ts-ignore
+                        const nextDesc = (typeof window !== "undefined" && window.prompt)
+                          ? // @ts-ignore
+                            window.prompt("Edit description (optional)", t.description ?? "")
+                          : null;
+                        // Due date (YYYY-MM-DD)
+                        // @ts-ignore
+                        const nextDue = (typeof window !== "undefined" && window.prompt)
+                          ? // @ts-ignore
+                            window.prompt("Edit due date (YYYY-MM-DD)", t.due ?? "")
+                          : null;
+
+                        const patch: Partial<Task> = {};
+                        if (nextDesc !== null) patch.description = nextDesc?.trim() || null as any;
+                        if (nextDue !== null)  patch.due = nextDue?.trim() || null as any;
+                        if (Object.keys(patch).length) onEditTask?.(t.id, patch);
+                      }}
+                      style={{ paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderColor: Colors.border, borderRadius: 6, backgroundColor: "#fff" }}
+                    >
+                      <Text style={{ color: Colors.text }}>Details</Text>
+                    </Pressable>
+
+
 
                     {/* Delete */}
                     <Pressable
