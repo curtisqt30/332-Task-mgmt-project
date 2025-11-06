@@ -29,6 +29,8 @@ export default function DashboardScreen({
   loading = false,
   onAddTask,
   onSelectTask,
+  onEditTask,
+  onDeleteTask,
   currentUserInitials = "U",
   titleOverride,
 }: Props) {

@@ -76,12 +76,20 @@ export default function PersonalDashboard() {
   };
 
   const onDeleteTask = async (taskId: Task["id"]) => {
-    const snapshot = tasks;
-    setTasks(ts => ts.filter(t => t.id !== taskId)); // optimistic
+    const prev = tasks;
+    setTasks(ts => ts.filter(t => t.id !== taskId));
+
     try {
-      await fetch(`${API}/api/tasks/${taskId}`, { method: "DELETE" });
-    } catch {
-      setTasks(snapshot); // rollback
+      const res = await fetch(`${API}/api/tasks/${taskId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok && res.status !== 204) {
+        setTasks(prev);
+        alert("Failed to delete task.");
+      }
+    } catch (err) {
+      setTasks(prev);
+      alert("Network error while deleting task.");
     }
   };
 

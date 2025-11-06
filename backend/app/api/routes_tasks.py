@@ -39,12 +39,3 @@ def delete_task(task_id: int, db: Session = Depends(get_db)):
     if not obj: raise HTTPException(404, "Task not found")
     db.delete(obj); db.commit()
     return None
-
-@router.get("/tasks", response_model=List[TaskOut])
-def list_tasks(q: Optional[str] = Query(None), status: Optional[Status] = Query(None), db: Session = Depends(get_db)):
-    query = db.query(Task)
-    if q:
-        query = query.filter(Task.title.ilike(f"%{q}%"))
-    if status:
-        query = query.filter(Task.status == status)
-    return query.order_by(Task.id.desc()).all()
