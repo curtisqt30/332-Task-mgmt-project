@@ -11,7 +11,7 @@ type Props = {
   loading?: boolean;
   onAddTask?: (title: string) => void;
   onSelectTask?: (taskId: Task["id"]) => void;        // tap card cycles status
-  onEditTask?: (taskId: Task["id"], patch: Partial<Task>) => void;  
+  onEditTask?: (taskId: Task["id"], patch: Partial<Task>) => void;
   onDeleteTask?: (taskId: Task["id"]) => void;               
   currentUserInitials?: string;
   titleOverride?: string;
@@ -155,6 +155,12 @@ export default function DashboardScreen({
                         )}
                       </View>
                     )}
+                                          
+                    {t.description ? (
+                      <Text style={{ color: Colors.secondary, marginTop: 6 }}>
+                        {t.description}
+                      </Text>
+                    ) : null}
 
                     <Text style={{ color: statusColor(t.status), fontWeight: "600" }}>{t.status}</Text>
                   </View>
@@ -171,6 +177,7 @@ export default function DashboardScreen({
 
                         if (suggested != null && suggested.trim()) {
                           onEditTask?.(t.id, { title: suggested.trim() } );
+                          
                         }
                       }}
                       style={{ paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderColor: Colors.border, borderRadius: 6, backgroundColor: "#fff" }}
@@ -203,8 +210,6 @@ export default function DashboardScreen({
                     >
                       <Text style={{ color: Colors.text }}>Details</Text>
                     </Pressable>
-
-
 
                     {/* Delete */}
                     <Pressable
