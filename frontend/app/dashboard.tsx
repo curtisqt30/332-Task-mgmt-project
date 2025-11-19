@@ -15,30 +15,36 @@ export default function PersonalDashboard() {
       const r = await fetch(`${API}/api/tasks`);
       if (!r.ok) throw new Error("Failed to fetch tasks");
       const data = await r.json();
-        setTasks(
-          data.map((t: any) => ({
-            id: t.id,
-            title: t.title,
-            status: t.status,
-            description: t.description ?? null,
-            due: t.due ?? null,       
-            category: t.category ?? null,
-            assignees: t.assignees ?? [],
-          }))
-        );
+      setTasks(
+        data.map((t: any) => ({
+          id: t.id,
+          title: t.title,
+          status: t.status,
+          description: t.description ?? null,
+          due: t.due ?? null,
+          category: t.category ?? null,
+          assignees: t.assignees ?? [],
+        }))
+      );
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
-  // ---- Add task (title only; backend will default status) ----
-  const onAddTask = async (title: string) => {
+  // ---- Add task with title, description, and due date ----
+  const onAddTask = async (title: string, description?: string | null, due?: string | null) => {
+    const body: any = { title };
+    if (description) body.description = description;
+    if (due) body.due = due;
+    
     await fetch(`${API}/api/tasks`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ title }),
+      body: JSON.stringify(body),
     });
     load();
   };
@@ -48,11 +54,11 @@ export default function PersonalDashboard() {
     s === "Pending" ? "In Progress" : s === "In Progress" ? "Completed" : "Pending";
 
   const onSelectTask = async (taskId: Task["id"]) => {
-    const cur = tasks.find(t => t.id === taskId);
+    const cur = tasks.find((t) => t.id === taskId);
     if (!cur) return;
     const next = cycle(cur.status);
 
-    setTasks(ts => ts.map(t => (t.id === taskId ? { ...t, status: next } : t)));
+    setTasks((ts) => ts.map((t) => (t.id === taskId ? { ...t, status: next } : t)));
     try {
       await fetch(`${API}/api/tasks/${taskId}`, {
         method: "PATCH",
@@ -60,20 +66,20 @@ export default function PersonalDashboard() {
         body: JSON.stringify({ status: next }),
       });
     } catch {
-      setTasks(ts => ts.map(t => (t.id === taskId ? { ...t, status: cur.status } : t)));
+      setTasks((ts) => ts.map((t) => (t.id === taskId ? { ...t, status: cur.status } : t)));
     }
   };
 
-  // ---- EDIT: title / description / due (partial patch, optimistic) ----
+  // ---- EDIT: title / description / due / status (partial patch, optimistic) ----
   const onEditTask = async (taskId: Task["id"], patch: Partial<Task>) => {
     const prev = tasks;
-    setTasks(ts => ts.map(t => (t.id === taskId ? { ...t, ...patch } : t)));
+    setTasks((ts) => ts.map((t) => (t.id === taskId ? { ...t, ...patch } : t)));
 
     // Only send fields the API understands
     const body: any = {};
     if (patch.title !== undefined) body.title = patch.title;
     if (patch.description !== undefined) body.description = patch.description; // string|null
-    if (patch.due !== undefined) body.due = patch.due;                         // "YYYY-MM-DD"|null
+    if (patch.due !== undefined) body.due = patch.due; // "YYYY-MM-DD"|null
     if (patch.status !== undefined) body.status = patch.status;
     if (patch.category !== undefined) body.category = patch.category;
 
@@ -93,7 +99,7 @@ export default function PersonalDashboard() {
   // ---- DELETE (optimistic) ----
   const onDeleteTask = async (taskId: Task["id"]) => {
     const prev = tasks;
-    setTasks(ts => ts.filter(t => t.id !== taskId));
+    setTasks((ts) => ts.filter((t) => t.id !== taskId));
     try {
       const res = await fetch(`${API}/api/tasks/${taskId}`, { method: "DELETE" });
       if (!res.ok && res.status !== 204) throw new Error("Delete failed");
@@ -109,7 +115,7 @@ export default function PersonalDashboard() {
       loading={loading}
       onAddTask={onAddTask}
       onSelectTask={onSelectTask}
-      onEditTask={onEditTask}  
+      onEditTask={onEditTask}
       onDeleteTask={onDeleteTask}
       currentUserInitials="CT"
       titleOverride="My Tasks"
