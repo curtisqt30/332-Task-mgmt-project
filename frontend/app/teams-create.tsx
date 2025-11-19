@@ -2,7 +2,7 @@ import { useRouter } from "expo-router";
 import { useState } from "react";
 import { View, Text, TextInput, Pressable, Alert } from "react-native";
 import { Colors } from "../constants/theme";
-import { getTeams, saveTeams, getUser, getMemberships, saveMemberships, setCurrentTeamId } from "../../../lib/storage";
+import { getTeams, saveTeams, getUser, getMemberships, saveMemberships, setCurrentTeamId } from "../lib/storage";
 import { uid, joinCode } from "../lib/id";
 
 export default function CreateTeam() {

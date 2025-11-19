@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { View, Text, TextInput, Pressable, ScrollView } from "react-native";
 import { useRouter, Link } from "expo-router";
 import { Colors } from "../constants/theme";
-import { getUser, setUser, getTeams, getMemberships, setCurrentTeamId, type Team } from "../../../lib/storage";
+import { getUser, setUser, getTeams, getMemberships, setCurrentTeamId, type Team } from "../lib/storage";
 import { uid, initialsFromName } from "../lib/id";
 
 export default function TeamsHub() {

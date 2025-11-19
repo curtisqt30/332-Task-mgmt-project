@@ -2,7 +2,7 @@ import { useRouter } from "expo-router";
 import { useState } from "react";
 import { View, Text, TextInput, Pressable, Alert } from "react-native";
 import { Colors } from "../constants/theme";
-import { getUser, getTeams, getMemberships, saveMemberships, setCurrentTeamId } from "../../../lib/storage";
+import { getUser, getTeams, getMemberships, saveMemberships, setCurrentTeamId } from "../lib/storage";
 
 export default function JoinTeam() {
   const router = useRouter();
