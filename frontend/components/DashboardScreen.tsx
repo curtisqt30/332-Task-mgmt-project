@@ -70,8 +70,8 @@ export default function DashboardScreen({
   const headerTitle = titleOverride ?? (mode === "personal" ? "My Tasks" : `Team Tasks · ${teamId ?? ""}`);
 
   const drawerItems = [
-    { label: "Dashboard", href: "/(tabs)/dashboard" },
-    { label: "Sign Out", href: "/(tabs)/login" },
+    { label: "Dashboard", href: "/dashboard" },
+    { label: "Sign Out", href: "/login" },
   ];
 
   return (
