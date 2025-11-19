@@ -3,6 +3,7 @@ import { View, Text, TextInput, Pressable, ScrollView, Animated, Easing } from "
 import { useRouter } from "expo-router";
 import { Colors } from "@/constants/theme";
 import TaskModal from "./TaskModal";
+import SideNavigation from "./SideNavigation";
 import type { Task, Status } from "./types";
 
 type Props = {
@@ -15,13 +16,15 @@ type Props = {
   onEditTask?: (taskId: Task["id"], patch: Partial<Task>) => void;
   onDeleteTask?: (taskId: Task["id"]) => void;
   currentUserInitials?: string;
+  currentUserName?: string;
   titleOverride?: string;
+  teams?: Array<{ id: string; name: string; code: string }>;
 };
 
 const statusColor = (s: Status) =>
   ({ Pending: Colors.statusPending, "In Progress": Colors.statusInProgress, Completed: Colors.statusCompleted, Overdue: Colors.statusOverdue }[s]);
 
-const DRAWER_W = 260;
+const DRAWER_W = 280;
 
 export default function DashboardScreen({
   mode,
@@ -33,7 +36,9 @@ export default function DashboardScreen({
   onEditTask,
   onDeleteTask,
   currentUserInitials = "U",
+  currentUserName = "User",
   titleOverride,
+  teams = [],
 }: Props) {
   const router = useRouter();
   const [q, setQ] = useState("");
@@ -66,11 +71,6 @@ export default function DashboardScreen({
   };
 
   const headerTitle = titleOverride ?? (mode === "personal" ? "My Tasks" : `Team Tasks · ${teamId ?? ""}`);
-
-  const drawerItems = [
-    { label: "Dashboard", href: "/dashboard" },
-    { label: "Sign Out", href: "/login" },
-  ];
 
   // Modal handlers
   const openCreateModal = () => {
@@ -348,7 +348,7 @@ export default function DashboardScreen({
         />
       )}
 
-      {/* Drawer panel */}
+      {/* Drawer panel with SideNavigation */}
       <Animated.View
         style={{
           position: "absolute",
@@ -356,30 +356,22 @@ export default function DashboardScreen({
           bottom: 0,
           left: 0,
           width: DRAWER_W,
-          backgroundColor: Colors.surface,
-          borderRightWidth: 1,
-          borderColor: Colors.border,
-          padding: 16,
           transform: [{ translateX: drawerX }],
           shadowColor: "#000",
           shadowOpacity: 0.08,
           shadowOffset: { width: 2, height: 0 },
           shadowRadius: 6,
+          elevation: 5,
+          zIndex: 1000,
         }}
       >
-        <Text style={{ color: Colors.text, fontWeight: "800", fontSize: 18, marginBottom: 12 }}>Navigation</Text>
-        {drawerItems.map((item) => (
-          <Pressable
-            key={item.href}
-            onPress={() => {
-              toggleDrawer(false);
-              router.push(item.href);
-            }}
-            style={{ paddingVertical: 10, borderRadius: 8, paddingHorizontal: 8, marginBottom: 6 }}
-          >
-            <Text style={{ color: Colors.text }}>{item.label}</Text>
-          </Pressable>
-        ))}
+        <SideNavigation
+          currentView={mode === "personal" ? "my-tasks" : `team-${teamId}`}
+          teams={teams}
+          currentUserName={currentUserName}
+          currentUserInitials={currentUserInitials}
+          onClose={() => toggleDrawer(false)}
+        />
       </Animated.View>
     </View>
   );
