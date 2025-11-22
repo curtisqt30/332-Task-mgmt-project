@@ -26,6 +26,46 @@ const statusColor = (s: Status) =>
 
 const DRAWER_W = 280;
 
+// Helper function to check if a date string is today
+const isToday = (dateString: string | null | undefined): boolean => {
+  if (!dateString) return false;
+  const today = new Date();
+  const taskDate = new Date(dateString + "T00:00:00");
+  return (
+    taskDate.getDate() === today.getDate() &&
+    taskDate.getMonth() === today.getMonth() &&
+    taskDate.getFullYear() === today.getFullYear()
+  );
+};
+
+// Helper function to check if a date is overdue
+const isOverdue = (dateString: string | null | undefined, status: Status): boolean => {
+  if (!dateString || status === "Completed") return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const taskDate = new Date(dateString + "T00:00:00");
+  return taskDate < today;
+};
+
+// Helper function to check if a date is within this week
+const isThisWeek = (dateString: string | null | undefined): boolean => {
+  if (!dateString) return false;
+  const today = new Date();
+  const taskDate = new Date(dateString + "T00:00:00");
+  
+  // Get the start of this week (Sunday)
+  const startOfWeek = new Date(today);
+  startOfWeek.setDate(today.getDate() - today.getDay());
+  startOfWeek.setHours(0, 0, 0, 0);
+  
+  // Get the end of this week (Saturday)
+  const endOfWeek = new Date(startOfWeek);
+  endOfWeek.setDate(startOfWeek.getDate() + 6);
+  endOfWeek.setHours(23, 59, 59, 999);
+  
+  return taskDate >= startOfWeek && taskDate <= endOfWeek;
+};
+
 export default function DashboardScreen({
   mode,
   teamId,
@@ -58,6 +98,14 @@ export default function DashboardScreen({
       return byStatus && byQuery;
     });
   }, [tasks, q, status]);
+
+  // Calculate global stats from ALL tasks (not filtered)
+  const stats = useMemo(() => ({
+    dueToday: tasks.filter((t) => isToday(t.due)).length,
+    overdue: tasks.filter((t) => isOverdue(t.due, t.status)).length,
+    thisWeek: tasks.filter((t) => isThisWeek(t.due)).length,
+    completed: tasks.filter((t) => t.status === "Completed").length,
+  }), [tasks]);
 
   const toggleDrawer = (open?: boolean) => {
     const next = typeof open === "boolean" ? open : !drawerOpen;
@@ -301,31 +349,40 @@ export default function DashboardScreen({
           </ScrollView>
         </View>
 
-        {/* Right rail - Stats */}
-        <View style={{ width: 340, gap: 16 }}>
-          <View style={{ flexDirection: "row", gap: 12 }}>
-            {[
-              { label: "Due Today", value: filtered.filter((t) => t.due === new Date().toISOString().slice(0, 10)).length },
-              { label: "Overdue", value: filtered.filter((t) => t.status === "Overdue").length },
-              { label: "This Week", value: 0 },
-              { label: "Completed", value: filtered.filter((t) => t.status === "Completed").length },
-            ].map((kpi) => (
-              <View 
-                key={kpi.label} 
-                style={{ 
-                  flex: 1, 
-                  backgroundColor: Colors.surface, 
-                  borderRadius: 12, 
-                  borderWidth: 1, 
-                  borderColor: Colors.border, 
-                  padding: 12 
-                }}
-              >
-                <Text style={{ color: Colors.secondary, fontSize: 12 }}>{kpi.label}</Text>
-                <Text style={{ color: Colors.text, fontWeight: "800", fontSize: 18 }}>{kpi.value}</Text>
-              </View>
-            ))}
-          </View>
+        {/* Right rail - Stats (now stacked vertically) */}
+        <View style={{ width: 280, gap: 12 }}>
+          {[
+            { 
+              label: "Due Today", 
+              value: stats.dueToday
+            },
+            { 
+              label: "Overdue", 
+              value: stats.overdue
+            },
+            { 
+              label: "This Week", 
+              value: stats.thisWeek
+            },
+            { 
+              label: "Completed", 
+              value: stats.completed
+            },
+          ].map((kpi) => (
+            <View 
+              key={kpi.label} 
+              style={{ 
+                backgroundColor: Colors.surface, 
+                borderRadius: 12, 
+                borderWidth: 1, 
+                borderColor: Colors.border, 
+                padding: 16 
+              }}
+            >
+              <Text style={{ color: Colors.secondary, fontSize: 12, marginBottom: 4 }}>{kpi.label}</Text>
+              <Text style={{ color: Colors.text, fontWeight: "800", fontSize: 24 }}>{kpi.value}</Text>
+            </View>
+          ))}
         </View>
       </View>
 
