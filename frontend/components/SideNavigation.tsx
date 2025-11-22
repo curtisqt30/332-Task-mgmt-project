@@ -42,12 +42,6 @@ export default function SideNavigation({
       icon: "📋", 
       href: "/dashboard",
     },
-    { 
-      id: "my-calendar", 
-      label: "Calendar View", 
-      icon: "📅", 
-      href: "/calendar",
-    },
     
     // Divider
     { id: "divider-1", type: "divider" },
@@ -87,12 +81,6 @@ export default function SideNavigation({
     
     // Bottom Section
     { id: "divider-3", type: "divider" },
-    { 
-      id: "settings", 
-      label: "Settings", 
-      icon: "⚙️", 
-      href: "/settings",
-    },
     { 
       id: "sign-out", 
       label: "Sign Out", 
@@ -212,7 +200,7 @@ export default function SideNavigation({
                 marginBottom: 4,
               }}
             >
-              <Text style={{ fontSize: 16 }}>{item.icon}</Text>
+              <Text style={{ fontSize: 16 }}></Text>
               <Text style={{
                 color: isActive ? Colors.primary : Colors.text,
                 fontWeight: isActive ? "600" : "500",
@@ -253,7 +241,7 @@ export default function SideNavigation({
           fontSize: 11,
           textAlign: "center",
         }}>
-          Task Manager v1.0.0
+          Task Manager
         </Text>
       </View>
     </View>
