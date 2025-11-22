@@ -8,7 +8,7 @@ const KEYS = {
 } as const;
 
 export type User = { id: string; name: string; initials: string };
-export type Team = { id: string; name: string; code: string; createdAt: string };
+export type Team = { id: string; name: string; code: string; createdAt: string; createId?: string};
 
 export async function getUser(): Promise<User | null> {
   const raw = await AsyncStorage.getItem(KEYS.USER);

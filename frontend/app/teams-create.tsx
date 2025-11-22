@@ -11,32 +11,212 @@ export default function CreateTeam() {
 
   const create = async () => {
     const nm = name.trim();
-    if (!nm) return;
+    if (!nm) {
+      Alert.alert("Team name required", "Please enter a name for your team.");
+      return;
+    }
+    
     const user = await getUser();
     if (!user) {
       Alert.alert("Set your display name first on the Teams page.");
       return;
     }
+    
     const teams = await getTeams();
     const id = uid(8);
     const code = joinCode();
-    const newTeam = { id, name: nm, code, createdAt: new Date().toISOString() };
+    const newTeam = { 
+      id, 
+      name: nm, 
+      code, 
+      createdAt: new Date().toISOString(),
+      creatorId: user.id, // Track who created the team
+    };
     await saveTeams([newTeam, ...teams]);
 
     const memberships = await getMemberships();
     await saveMemberships([{ userId: user.id, teamId: id }, ...memberships]);
     await setCurrentTeamId(id);
-    router.replace(`/dashboard`);
+    
+    Alert.alert(
+      "Team Created!",
+      `Your team "${nm}" has been created.\n\nShare code: ${code}`,
+      [{ text: "OK", onPress: () => router.replace("/dashboard") }]
+    );
+  };
+
+  const handleCancel = () => {
+    router.back();
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: Colors.background, alignItems: "center", justifyContent: "center", padding: 16 }}>
-      <View style={{ width: "100%", maxWidth: 420, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: 12, padding: 16 }}>
-        <Text style={{ color: Colors.primary, fontWeight: "800", fontSize: 20, marginBottom: 12 }}>Create a Team</Text>
-        <TextInput placeholder="Team name (e.g., CSUF 332)" value={name} onChangeText={setName} style={{ borderWidth: 1, borderColor: Colors.border, borderRadius: 8, backgroundColor: "#fff", paddingHorizontal: 12, paddingVertical: 10, marginBottom: 12 }} />
-        <Pressable onPress={create} style={{ backgroundColor: Colors.primary, paddingVertical: 12, borderRadius: 8 }}>
-          <Text style={{ color: "white", textAlign: "center", fontWeight: "700" }}>Create</Text>
+    <View style={{ 
+      flex: 1, 
+      backgroundColor: Colors.background,
+    }}>
+      {/* Header */}
+      <View style={{
+        paddingHorizontal: 20,
+        paddingVertical: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: Colors.border,
+        backgroundColor: Colors.surface,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 12,
+      }}>
+        <Pressable
+          onPress={handleCancel}
+          style={{
+            width: 40,
+            height: 40,
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: 8,
+            borderWidth: 1,
+            borderColor: Colors.border,
+            backgroundColor: "#fff",
+          }}
+        >
+          <Text style={{ fontSize: 18, color: Colors.text }}>←</Text>
         </Pressable>
+        <Text style={{ 
+          color: Colors.primary, 
+          fontSize: 20, 
+          fontWeight: "700" 
+        }}>
+          Create Team
+        </Text>
+      </View>
+
+      {/* Content */}
+      <View style={{ 
+        flex: 1,
+        alignItems: "center", 
+        justifyContent: "center", 
+        padding: 16 
+      }}>
+        <View style={{ 
+          width: "100%", 
+          maxWidth: 500, 
+          backgroundColor: Colors.surface, 
+          borderWidth: 1, 
+          borderColor: Colors.border, 
+          borderRadius: 16, 
+          padding: 24,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.05,
+          shadowRadius: 8,
+        }}>
+          {/* Icon */}
+          <View style={{
+            width: 56,
+            height: 56,
+            borderRadius: 28,
+            backgroundColor: Colors.primary + "15",
+            alignItems: "center",
+            justifyContent: "center",
+            marginBottom: 20,
+            alignSelf: "center",
+          }}>
+            <Text style={{ fontSize: 28 }}>👥</Text>
+          </View>
+
+          {/* Title */}
+          <Text style={{ 
+            color: Colors.text, 
+            fontWeight: "700", 
+            fontSize: 22, 
+            marginBottom: 8,
+            textAlign: "center",
+          }}>
+            Create a New Team
+          </Text>
+          
+          <Text style={{
+            color: Colors.secondary,
+            fontSize: 14,
+            marginBottom: 24,
+            textAlign: "center",
+            lineHeight: 20,
+          }}>
+            Teams allow you to collaborate on tasks with others. You'll receive a shareable code to invite members.
+          </Text>
+
+          {/* Input */}
+          <View style={{ marginBottom: 24 }}>
+            <Text style={{
+              fontSize: 14,
+              fontWeight: "600",
+              color: Colors.text,
+              marginBottom: 8,
+            }}>
+              Team Name <Text style={{ color: "#ef4444" }}>*</Text>
+            </Text>
+            <TextInput 
+              placeholder="e.g., CSUF 332 Project Team" 
+              value={name} 
+              onChangeText={setName}
+              autoFocus
+              style={{ 
+                borderWidth: 1, 
+                borderColor: Colors.border, 
+                borderRadius: 10, 
+                backgroundColor: "#FAFAFA", 
+                paddingHorizontal: 14, 
+                paddingVertical: 12,
+                fontSize: 15,
+              }} 
+            />
+          </View>
+
+          {/* Buttons */}
+          <View style={{
+            flexDirection: "row",
+            gap: 12,
+          }}>
+            <Pressable 
+              onPress={handleCancel} 
+              style={{ 
+                flex: 1,
+                paddingVertical: 12, 
+                borderRadius: 8,
+                borderWidth: 1,
+                borderColor: Colors.border,
+                backgroundColor: "white",
+              }}
+            >
+              <Text style={{ 
+                color: Colors.text, 
+                textAlign: "center", 
+                fontWeight: "600",
+                fontSize: 15,
+              }}>
+                Cancel
+              </Text>
+            </Pressable>
+
+            <Pressable 
+              onPress={create} 
+              style={{ 
+                flex: 1,
+                backgroundColor: Colors.primary, 
+                paddingVertical: 12, 
+                borderRadius: 8,
+              }}
+            >
+              <Text style={{ 
+                color: "white", 
+                textAlign: "center", 
+                fontWeight: "700",
+                fontSize: 15,
+              }}>
+                Create Team
+              </Text>
+            </Pressable>
+          </View>
+        </View>
       </View>
     </View>
   );
