@@ -75,7 +75,7 @@ export default function TeamsHub() {
           value={name}
           onChangeText={(v) => { setName(v); setInitials(initialsFromName(v)); }}
           onBlur={ensureIdentity}
-          placeholder="e.g., Curtis Tran"
+          placeholder="e.g., example"
           style={{ borderWidth: 1, borderColor: Colors.border, borderRadius: 8, backgroundColor: "white", paddingHorizontal: 12, paddingVertical: 8, maxWidth: 420 }}
         />
         <Text style={{ color: Colors.secondary }}>Initials: <Text style={{ fontWeight: "700", color: Colors.text }}>{initials}</Text></Text>
