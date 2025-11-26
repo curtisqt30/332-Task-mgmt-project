@@ -136,7 +136,6 @@ export default function SideNavigation({
               color: Colors.secondary,
               fontSize: 13,
             }}>
-              Personal Account
             </Text>
           </View>
         </View>
@@ -229,21 +228,6 @@ export default function SideNavigation({
           );
         })}
       </ScrollView>
-
-      {/* Version Info */}
-      <View style={{
-        padding: 16,
-        borderTopWidth: 1,
-        borderTopColor: Colors.border,
-      }}>
-        <Text style={{
-          color: Colors.secondary,
-          fontSize: 11,
-          textAlign: "center",
-        }}>
-          Task Manager
-        </Text>
-      </View>
     </View>
   );
 }

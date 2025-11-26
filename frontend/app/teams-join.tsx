@@ -122,19 +122,6 @@ export default function JoinTeam() {
           shadowOpacity: 0.05,
           shadowRadius: 8,
         }}>
-          {/* Icon */}
-          <View style={{
-            width: 56,
-            height: 56,
-            borderRadius: 28,
-            backgroundColor: Colors.accent + "15",
-            alignItems: "center",
-            justifyContent: "center",
-            marginBottom: 20,
-            alignSelf: "center",
-          }}>
-            <Text style={{ fontSize: 28 }}>🔗</Text>
-          </View>
 
           {/* Title */}
           <Text style={{ 
@@ -154,7 +141,7 @@ export default function JoinTeam() {
             textAlign: "center",
             lineHeight: 20,
           }}>
-            Enter the 6-character code shared by your team leader to join and start collaborating.
+            Enter the 6-character code shared by your team leader to join
           </Text>
 
           {/* Input */}
@@ -194,7 +181,6 @@ export default function JoinTeam() {
               marginTop: 6,
               textAlign: "center",
             }}>
-              Example: ABC123
             </Text>
           </View>
 

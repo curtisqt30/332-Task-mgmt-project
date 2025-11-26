@@ -109,19 +109,6 @@ export default function CreateTeam() {
           shadowOpacity: 0.05,
           shadowRadius: 8,
         }}>
-          {/* Icon */}
-          <View style={{
-            width: 56,
-            height: 56,
-            borderRadius: 28,
-            backgroundColor: Colors.primary + "15",
-            alignItems: "center",
-            justifyContent: "center",
-            marginBottom: 20,
-            alignSelf: "center",
-          }}>
-            <Text style={{ fontSize: 28 }}>👥</Text>
-          </View>
 
           {/* Title */}
           <Text style={{ 
@@ -141,7 +128,7 @@ export default function CreateTeam() {
             textAlign: "center",
             lineHeight: 20,
           }}>
-            Teams allow you to collaborate on tasks with others. You'll receive a shareable code to invite members.
+            You'll receive a shareable code to invite members.
           </Text>
 
           {/* Input */}

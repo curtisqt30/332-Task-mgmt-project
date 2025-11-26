@@ -8,7 +8,6 @@ import { uid, initialsFromName } from "../lib/id";
 export default function TeamsHub() {
   const router = useRouter();
   const [name, setName] = useState("");
-  const [initials, setInitials] = useState("U");
   const [userId, setUserId] = useState<string | null>(null);
   const [teams, setTeams] = useState<Team[]>([]);
   const [myTeamIds, setMyTeamIds] = useState<string[]>([]);
@@ -22,25 +21,12 @@ export default function TeamsHub() {
       if (u) {
         setUserId(u.id); 
         setName(u.name); 
-        setInitials(u.initials);
         setMyTeamIds(m.filter(x => x.userId === u.id).map(x => x.teamId));
       }
       setTeams(t);
       setLoading(false);
     })();
   }, []);
-
-  const ensureIdentity = async () => {
-    if (userId && name.trim()) return userId;
-    const id = userId ?? uid();
-    const nm = name.trim() || "User";
-    const inits = initialsFromName(nm);
-    await setUser({ id, name: nm, initials: inits });
-    setUserId(id); 
-    setInitials(inits); 
-    setName(nm);
-    return id;
-  };
 
   const goToTeam = async (teamId: string) => {
     await setCurrentTeamId(teamId);
@@ -142,115 +128,10 @@ export default function TeamsHub() {
         </View>
       </View>
 
-<<<<<<< Updated upstream
-      {/* Identity */}
-      <View style={{ padding: 16, borderBottomWidth: 1, borderColor: Colors.border, backgroundColor: Colors.surface, gap: 8 }}>
-        <Text style={{ color: Colors.text, fontWeight: "700" }}>Your Display Name</Text>
-        <TextInput
-          value={name}
-          onChangeText={(v) => { setName(v); setInitials(initialsFromName(v)); }}
-          onBlur={ensureIdentity}
-          placeholder="e.g., example"
-          style={{ borderWidth: 1, borderColor: Colors.border, borderRadius: 8, backgroundColor: "white", paddingHorizontal: 12, paddingVertical: 8, maxWidth: 420 }}
-        />
-        <Text style={{ color: Colors.secondary }}>Initials: <Text style={{ fontWeight: "700", color: Colors.text }}>{initials}</Text></Text>
-      </View>
-=======
       <ScrollView 
         contentContainerStyle={{ padding: 20, gap: 20 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* User Profile Card */}
-        <View style={{ 
-          backgroundColor: Colors.surface, 
-          borderWidth: 1, 
-          borderColor: Colors.border, 
-          borderRadius: 12, 
-          padding: 20,
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 1 },
-          shadowOpacity: 0.05,
-          shadowRadius: 4,
-        }}>
-          <Text style={{ 
-            color: Colors.text, 
-            fontWeight: "700", 
-            fontSize: 16, 
-            marginBottom: 16 
-          }}>
-            Your Profile
-          </Text>
->>>>>>> Stashed changes
-
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 16, marginBottom: 16 }}>
-            {/* Avatar */}
-            <View style={{
-              width: 56,
-              height: 56,
-              borderRadius: 28,
-              backgroundColor: Colors.primary,
-              alignItems: "center",
-              justifyContent: "center",
-            }}>
-              <Text style={{
-                color: "white",
-                fontSize: 20,
-                fontWeight: "700",
-              }}>
-                {initials}
-              </Text>
-            </View>
-
-            {/* Name Input */}
-            <View style={{ flex: 1 }}>
-              <Text style={{ 
-                color: Colors.secondary, 
-                fontSize: 12, 
-                marginBottom: 6,
-                fontWeight: "600",
-              }}>
-                Display Name
-              </Text>
-              <TextInput
-                value={name}
-                onChangeText={(v) => { 
-                  setName(v); 
-                  setInitials(initialsFromName(v)); 
-                }}
-                onBlur={ensureIdentity}
-                placeholder="Enter your name"
-                style={{ 
-                  borderWidth: 1, 
-                  borderColor: Colors.border, 
-                  borderRadius: 8, 
-                  backgroundColor: "white", 
-                  paddingHorizontal: 12, 
-                  paddingVertical: 10,
-                  fontSize: 15,
-                }}
-              />
-            </View>
-          </View>
-
-          <View style={{
-            backgroundColor: Colors.primary + "08",
-            borderRadius: 8,
-            padding: 12,
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 8,
-          }}>
-            <Text style={{ fontSize: 16 }}>ℹ️</Text>
-            <Text style={{ 
-              color: Colors.secondary, 
-              fontSize: 13,
-              flex: 1,
-              lineHeight: 18,
-            }}>
-              Your initials (<Text style={{ fontWeight: "700", color: Colors.text }}>{initials}</Text>) will be displayed on team tasks
-            </Text>
-          </View>
-        </View>
 
         {/* My Teams Section (Teams I Own) */}
         <View>
@@ -294,7 +175,7 @@ export default function TeamsHub() {
               padding: 24,
               alignItems: "center",
             }}>
-              <Text style={{ fontSize: 40, marginBottom: 8 }}>👑</Text>
+              <Text style={{ fontSize: 40, marginBottom: 8 }}></Text>
               <Text style={{ 
                 color: Colors.text, 
                 fontWeight: "600", 
@@ -310,7 +191,6 @@ export default function TeamsHub() {
                 lineHeight: 18,
                 marginBottom: 16,
               }}>
-                Create your first team to start collaborating
               </Text>
               <Pressable 
                 onPress={() => router.push("/teams-create")}
@@ -347,17 +227,6 @@ export default function TeamsHub() {
                     shadowRadius: 3,
                   }}
                 >
-                  {/* Team Icon */}
-                  <View style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: 12,
-                    backgroundColor: Colors.primary + "15",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}>
-                    <Text style={{ fontSize: 24 }}>👑</Text>
-                  </View>
 
                   {/* Team Info */}
                   <View style={{ flex: 1 }}>
@@ -391,7 +260,7 @@ export default function TeamsHub() {
                         gap: 4,
                       }}>
                         <Text style={{ color: Colors.secondary, fontSize: 12 }}>
-                          🔑
+                          
                         </Text>
                         <Text style={{ 
                           color: Colors.secondary, 
@@ -460,7 +329,7 @@ export default function TeamsHub() {
               padding: 24,
               alignItems: "center",
             }}>
-              <Text style={{ fontSize: 40, marginBottom: 8 }}>🤝</Text>
+              <Text style={{ fontSize: 40, marginBottom: 8 }}></Text>
               <Text style={{ 
                 color: Colors.text, 
                 fontWeight: "600", 
@@ -513,17 +382,6 @@ export default function TeamsHub() {
                     shadowRadius: 3,
                   }}
                 >
-                  {/* Team Icon */}
-                  <View style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: 12,
-                    backgroundColor: Colors.accent + "15",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}>
-                    <Text style={{ fontSize: 24 }}>📁</Text>
-                  </View>
 
                   {/* Team Info */}
                   <View style={{ flex: 1 }}>
@@ -557,7 +415,7 @@ export default function TeamsHub() {
                         gap: 4,
                       }}>
                         <Text style={{ color: Colors.secondary, fontSize: 12 }}>
-                          🔑
+                          
                         </Text>
                         <Text style={{ 
                           color: Colors.secondary, 
