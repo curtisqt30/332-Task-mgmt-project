@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, Date, Enum
+from sqlalchemy import Column, Integer, String, Text, Date, Enum, ForeignKey
 from app.core.db import Base
 import enum
 
@@ -16,3 +16,4 @@ class Task(Base):
     status = Column(Enum(Status), nullable=False, default=Status.pending)
     due = Column(Date)
     category = Column(String(64))
+    ownerUserID = Column(Integer, ForeignKey("user.userID"), nullable=False)

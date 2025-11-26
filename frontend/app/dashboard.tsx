@@ -1,148 +1,110 @@
 import { useCallback, useEffect, useState } from "react";
 import DashboardScreen from "@/components/DashboardScreen";
-import { getTeams, getMemberships, getUser } from "@/lib/storage";
+import { useAuth } from "@/contexts/AuthContext";
+import { useRouter } from "expo-router";
 import type { Task } from "@/components/types";
-import type { Team } from "@/lib/storage";
 
 const API = process.env.EXPO_PUBLIC_API_BASE ?? "http://localhost:8000";
 
 export default function PersonalDashboard() {
+  const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
-  const [teams, setTeams] = useState<Team[]>([]);
-  const [userTeams, setUserTeams] = useState<Team[]>([]);
-  const [userName, setUserName] = useState("User");
-  const [userInitials, setUserInitials] = useState("U");
 
-  // Load user info and teams
+  // Redirect if not logged in
   useEffect(() => {
-    (async () => {
-      try {
-        // Get user info
-        const user = await getUser();
-        if (user) {
-          setUserName(user.name);
-          setUserInitials(user.initials);
-        }
-        
-        // Get all teams and memberships
-        const allTeams = await getTeams();
-        const memberships = await getMemberships();
-        
-        // Filter user's teams
-        if (user) {
-          const userTeamIds = memberships
-            .filter(m => m.userId === user.id)
-            .map(m => m.teamId);
-          const filtered = allTeams.filter(t => userTeamIds.includes(t.id));
-          setUserTeams(filtered);
-        }
-        
-        setTeams(allTeams);
-      } catch (error) {
-        console.error("Error loading user/teams:", error);
-      }
-    })();
-  }, []);
+    if (!authLoading && !user) {
+      router.replace("/login");
+    }
+  }, [authLoading, user]);
 
   // Load tasks
   const load = useCallback(async () => {
+    if (!user) return;
+    
     setLoading(true);
     try {
-      const r = await fetch(`${API}/api/tasks`);
-      if (!r.ok) throw new Error("Failed to fetch tasks");
+      const r = await fetch(`${API}/api/tasks`, { credentials: "include" });
+      if (!r.ok) {
+        if (r.status === 401) {
+          router.replace("/login");
+          return;
+        }
+        throw new Error("Failed to fetch");
+      }
       const data = await r.json();
-      setTasks(
-        data.map((t: any) => ({
-          id: t.id,
-          title: t.title,
-          status: t.status,
-          description: t.description ?? null,
-          due: t.due ?? null,
-          category: t.category ?? null,
-          assignees: t.assignees ?? [],
-        }))
-      );
+      setTasks(data.map((t: any) => ({ id: t.id, title: t.title, status: t.status, description: t.description ?? null, due: t.due ?? null, category: t.category ?? null, assignees: t.assignees ?? [] })));
     } catch (error) {
       console.error("Error loading tasks:", error);
-      // Use mock data if API fails
-      setTasks([
-        {
-          id: 1,
-          title: "Complete project documentation",
-          status: "In Progress",
-          description: "Finish writing the technical documentation",
-          due: "2025-01-15",
-          category: "Documentation",
-        },
-        {
-          id: 2,
-          title: "Review pull requests",
-          status: "Pending",
-          description: null,
-          due: "2025-01-10",
-          category: "Code Review",
-        },
-      ]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    if (user) load();
+  }, [load, user]);
 
-  // Add task with title, description, and due date
   const onAddTask = async (title: string, description?: string | null, due?: string | null) => {
+    if (!user) return;
+    
     const body: any = { title };
     if (description) body.description = description;
     if (due) body.due = due;
     
     try {
-      await fetch(`${API}/api/tasks`, {
+      const response = await fetch(`${API}/api/tasks`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(body),
+        credentials: "include",
       });
+      
+      if (response.status === 401) {
+        router.replace("/login");
+        return;
+      }
+      if (!response.ok) throw new Error("Failed");
       load();
     } catch (error) {
       console.error("Error adding task:", error);
-      // Add locally if API fails
-      const newTask: Task = {
-        id: Date.now(),
-        title,
-        status: "Pending",
-        description: description || null,
-        due: due || null,
-      };
-      setTasks([...tasks, newTask]);
     }
   };
 
-  // Cycle status on tap
   const cycle = (s: Task["status"]): Task["status"] =>
     s === "Pending" ? "In Progress" : s === "In Progress" ? "Completed" : "Pending";
 
   const onSelectTask = async (taskId: Task["id"]) => {
+    if (!user) return;
+    
     const cur = tasks.find((t) => t.id === taskId);
     if (!cur) return;
     const next = cycle(cur.status);
 
     setTasks((ts) => ts.map((t) => (t.id === taskId ? { ...t, status: next } : t)));
     try {
-      await fetch(`${API}/api/tasks/${taskId}`, {
+      const response = await fetch(`${API}/api/tasks/${taskId}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ status: next }),
+        credentials: "include",
       });
-    } catch {
+      
+      if (response.status === 401) {
+        router.replace("/login");
+        return;
+      }
+      if (!response.ok) throw new Error("Failed");
+    } catch (error) {
+      console.error("Error updating:", error);
       setTasks((ts) => ts.map((t) => (t.id === taskId ? { ...t, status: cur.status } : t)));
     }
   };
 
-  // Edit task
   const onEditTask = async (taskId: Task["id"], patch: Partial<Task>) => {
+    if (!user) return;
+    
     const prev = tasks;
     setTasks((ts) => ts.map((t) => (t.id === taskId ? { ...t, ...patch } : t)));
 
@@ -158,25 +120,44 @@ export default function PersonalDashboard() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
+        credentials: "include",
       });
-      if (!r.ok) throw new Error("Update failed");
+      
+      if (r.status === 401) {
+        router.replace("/login");
+        return;
+      }
+      if (!r.ok) throw new Error("Failed");
     } catch (e) {
       console.error(e);
-      setTasks(prev); // rollback
-    }
-  };
-
-  // Delete task
-  const onDeleteTask = async (taskId: Task["id"]) => {
-    const prev = tasks;
-    setTasks((ts) => ts.filter((t) => t.id !== taskId));
-    try {
-      const res = await fetch(`${API}/api/tasks/${taskId}`, { method: "DELETE" });
-      if (!res.ok && res.status !== 204) throw new Error("Delete failed");
-    } catch {
       setTasks(prev);
     }
   };
+
+  const onDeleteTask = async (taskId: Task["id"]) => {
+    if (!user) return;
+    
+    const prev = tasks;
+    setTasks((ts) => ts.filter((t) => t.id !== taskId));
+    try {
+      const res = await fetch(`${API}/api/tasks/${taskId}`, { method: "DELETE", credentials: "include" });
+      
+      if (res.status === 401) {
+        router.replace("/login");
+        return;
+      }
+      if (!res.ok && res.status !== 204) throw new Error("Failed");
+    } catch (error) {
+      console.error("Error deleting:", error);
+      setTasks(prev);
+    }
+  };
+
+  if (authLoading || !user) {
+    return null;
+  }
+
+  const userInitials = user.userName.substring(0, 2).toUpperCase();
 
   return (
     <DashboardScreen
@@ -188,9 +169,9 @@ export default function PersonalDashboard() {
       onEditTask={onEditTask}
       onDeleteTask={onDeleteTask}
       currentUserInitials={userInitials}
-      currentUserName={userName}
+      currentUserName={user.userName}
       titleOverride="My Tasks"
-      teams={userTeams}
+      teams={[]}
     />
   );
 }

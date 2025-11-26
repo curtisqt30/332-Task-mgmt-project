@@ -1,126 +1,76 @@
 import { useState } from "react";
-import { View, Text, TextInput, Pressable, Alert } from "react-native";
+import { View, Text, TextInput, Pressable, Alert, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
 import { Colors } from "@/constants/theme";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Login() {
   const router = useRouter();
+  const { login } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
-    if (username === "test" && password === "test") {
+  const handleLogin = async () => {
+    if (!username.trim() || !password.trim()) {
+      Alert.alert("Missing fields", "Please enter both username and password.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await login(username, password);
       router.replace("/dashboard");
-    } else {
-      Alert.alert("Invalid credentials");
+    } catch (error: any) {
+      Alert.alert("Login Failed", error.message || "Invalid credentials");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <View
-      style={{
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-        backgroundColor: Colors.background,
-        paddingHorizontal: 24,
-      }}
-    >
-      <View
-        style={{
-          width: "100%",
-          maxWidth: 400,
-          height: 520, // extended height
-          backgroundColor: Colors.surface,
-          borderRadius: 12,
-          padding: 24,
-          borderWidth: 2, // thicker border for stronger visual
-          borderColor: Colors.primary, // use theme accent
-          shadowColor: "#000",
-          shadowOpacity: 0.05,
-          shadowOffset: { width: 0, height: 2 },
-          shadowRadius: 4,
-          justifyContent: "center",
-        }}
-      >
-        <Text
-          style={{
-            fontSize: 28,
-            fontWeight: "700",
-            color: Colors.primary,
-            textAlign: "center",
-            marginBottom: 20,
-          }}
-        >
+    <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: Colors.background, paddingHorizontal: 24 }}>
+      <View style={{ width: "100%", maxWidth: 400, backgroundColor: Colors.surface, borderRadius: 12, padding: 24, borderWidth: 2, borderColor: Colors.primary }}>
+        <Text style={{ fontSize: 28, fontWeight: "700", color: Colors.primary, textAlign: "center", marginBottom: 20 }}>
           Task Manager Login
         </Text>
 
-        <Text style={{ marginBottom: 6, color: Colors.text }}>Username</Text>
+        <Text style={{ marginBottom: 6, color: Colors.text, fontWeight: "600" }}>Username</Text>
         <TextInput
-          style={{
-            borderWidth: 1,
-            borderColor: Colors.border,
-            borderRadius: 8,
-            padding: 10,
-            marginBottom: 16,
-          }}
+          style={{ borderWidth: 1, borderColor: Colors.border, borderRadius: 8, padding: 12, marginBottom: 16, fontSize: 15 }}
           placeholder="Enter username"
           value={username}
           onChangeText={setUsername}
           autoCapitalize="none"
+          editable={!loading}
         />
 
-        <Text style={{ marginBottom: 6, color: Colors.text }}>Password</Text>
+        <Text style={{ marginBottom: 6, color: Colors.text, fontWeight: "600" }}>Password</Text>
         <TextInput
-          style={{
-            borderWidth: 1,
-            borderColor: Colors.border,
-            borderRadius: 8,
-            padding: 10,
-            marginBottom: 24,
-          }}
+          style={{ borderWidth: 1, borderColor: Colors.border, borderRadius: 8, padding: 12, marginBottom: 24, fontSize: 15 }}
           placeholder="Enter password"
           secureTextEntry
           value={password}
           onChangeText={setPassword}
+          editable={!loading}
         />
 
         <Pressable
           onPress={handleLogin}
-          style={{
-            backgroundColor: Colors.primary,
-            paddingVertical: 12,
-            borderRadius: 8,
-          }}
+          disabled={loading}
+          style={{ backgroundColor: loading ? "#94A3B8" : Colors.primary, paddingVertical: 12, borderRadius: 8, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8 }}
         >
-          <Text
-            style={{
-              color: "white",
-              fontWeight: "600",
-              textAlign: "center",
-              fontSize: 16,
-            }}
-          >
-            Log In
+          {loading && <ActivityIndicator color="white" />}
+          <Text style={{ color: "white", fontWeight: "600", textAlign: "center", fontSize: 16 }}>
+            {loading ? "Logging in..." : "Log In"}
           </Text>
         </Pressable>
 
-      <Pressable onPress={() => router.push("/register")} style={{ marginTop: 16 }}>
-        <Text style={{ textAlign: "center", color: Colors.accent, fontWeight: "500" }}>
-          Don’t have an account? Register
-        </Text>
-      </Pressable>
-
-        <Text
-          style={{
-            textAlign: "center",
-            color: Colors.secondary,
-            marginTop: 16,
-            fontSize: 13,
-          }}
-        >
-          Username: test | Password: test
-        </Text>
+        <Pressable onPress={() => router.push("/register")} style={{ marginTop: 16 }} disabled={loading}>
+          <Text style={{ textAlign: "center", color: Colors.accent, fontWeight: "500" }}>
+            Don't have an account? Register
+          </Text>
+        </Pressable>
       </View>
     </View>
   );
