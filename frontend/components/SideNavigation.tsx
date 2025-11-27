@@ -187,7 +187,6 @@ export default function SideNavigation({
                 marginBottom: 4,
               }}
             >
-              <Text style={{ fontSize: 16 }}>{item.icon}</Text>
               <Text style={{
                 color: isActive ? Colors.primary : Colors.text,
                 fontWeight: isActive ? "600" : "500",

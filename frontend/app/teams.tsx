@@ -1,51 +1,66 @@
 import { useEffect, useState } from "react";
-import { View, Text, TextInput, Pressable, ScrollView } from "react-native";
+import { View, Text, Pressable, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
 import { Colors } from "../constants/theme";
 import { getUser, setUser, getTeams, getMemberships, setCurrentTeamId, type Team } from "../lib/storage";
-import { uid, initialsFromName } from "../lib/id";
+import { initialsFromName } from "../lib/id";
 import { HamburgerButton } from "@/components/AppLayout";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function TeamsHub() {
   const router = useRouter();
-  const [name, setName] = useState("");
-  const [initials, setInitials] = useState("U");
+  const { user: authUser } = useAuth();
   const [userId, setUserId] = useState<string | null>(null);
+  const [userName, setUserName] = useState("");
+  const [userInitials, setUserInitials] = useState("U");
   const [teams, setTeams] = useState<Team[]>([]);
   const [myTeamIds, setMyTeamIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    (async () => {
-      const u = await getUser();
-      const t = await getTeams();
-      const m = await getMemberships();
-      if (u) {
-        setUserId(u.id); 
-        setName(u.name); 
-        setInitials(u.initials);
-        setMyTeamIds(m.filter(x => x.userId === u.id).map(x => x.teamId));
-      }
-      setTeams(t);
-      setLoading(false);
-    })();
-  }, []);
+    loadData();
+  }, [authUser]);
 
-  const ensureIdentity = async () => {
-    if (userId && name.trim()) return userId;
-    const id = userId ?? uid();
-    const nm = name.trim() || "User";
-    const inits = initialsFromName(nm);
-    await setUser({ id, name: nm, initials: inits });
-    setUserId(id); 
-    setInitials(inits); 
-    setName(nm);
-    return id;
+  const loadData = async () => {
+    try {
+      // Sync backend auth user with local storage
+      if (authUser) {
+        const localUser = await getUser();
+        const authUserId = String(authUser.userId);
+        
+        // Create or update local user to match backend user
+        if (!localUser || localUser.id !== authUserId) {
+          const initials = initialsFromName(authUser.userName);
+          await setUser({
+            id: authUserId,
+            name: authUser.userName,
+            initials: initials,
+          });
+          setUserId(authUserId);
+          setUserName(authUser.userName);
+          setUserInitials(initials);
+        } else {
+          setUserId(localUser.id);
+          setUserName(localUser.name);
+          setUserInitials(localUser.initials);
+        }
+
+        // Load teams and memberships
+        const t = await getTeams();
+        const m = await getMemberships();
+        setMyTeamIds(m.filter(x => x.userId === authUserId).map(x => x.teamId));
+        setTeams(t);
+      }
+    } catch (error) {
+      console.error("Error loading teams data:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const goToTeam = async (teamId: string) => {
     await setCurrentTeamId(teamId);
-    router.push(`/dashboard`);
+    router.push(`/team-dashboard/${teamId}`);
   };
 
   if (loading) {
@@ -186,6 +201,7 @@ export default function TeamsHub() {
                 lineHeight: 18,
                 marginBottom: 16,
               }}>
+                Create a team to collaborate with others
               </Text>
               <Pressable 
                 onPress={() => router.push("/teams-create")}
@@ -254,6 +270,7 @@ export default function TeamsHub() {
                         gap: 4,
                       }}>
                         <Text style={{ color: Colors.secondary, fontSize: 12 }}>
+                          Code:
                         </Text>
                         <Text style={{ 
                           color: Colors.secondary, 
@@ -337,6 +354,7 @@ export default function TeamsHub() {
                 lineHeight: 18,
                 marginBottom: 16,
               }}>
+                Join a team using a 6-character code
               </Text>
               <Pressable 
                 onPress={() => router.push("/teams-join")}
@@ -373,7 +391,6 @@ export default function TeamsHub() {
                     shadowRadius: 3,
                   }}
                 >
-
                   {/* Team Info */}
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 }}>

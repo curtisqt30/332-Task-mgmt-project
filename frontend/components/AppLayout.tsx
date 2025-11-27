@@ -4,7 +4,8 @@ import { usePathname, useLocalSearchParams, useSegments } from "expo-router";
 import { Colors } from "@/constants/theme";
 import SideNavigation from "./SideNavigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { getTeams, getMemberships, type Team } from "@/lib/storage";
+import { getTeams, getMemberships, getUser, setUser, type Team } from "@/lib/storage";
+import { initialsFromName } from "@/lib/id";
 
 const DRAWER_W = 280;
 
@@ -36,26 +37,44 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const [teams, setTeams] = useState<Team[]>([]);
   const drawerX = useRef(new Animated.Value(-DRAWER_W)).current;
 
-  // Load teams on mount and when user changes
+  // Sync backend user with local storage and load teams
   useEffect(() => {
-    loadTeams();
+    syncUserAndLoadTeams();
   }, [user]);
 
-  const loadTeams = async () => {
+  const syncUserAndLoadTeams = async () => {
     try {
-      const allTeams = await getTeams();
-      const memberships = await getMemberships();
-      
       if (user) {
+        // Sync backend user to local storage
+        const localUser = await getUser();
+        const userId = String(user.userId); // Convert backend userId to string
+        
+        // Create or update local user to match backend user
+        if (!localUser || localUser.id !== userId) {
+          const initials = initialsFromName(user.userName);
+          await setUser({
+            id: userId,
+            name: user.userName,
+            initials: initials,
+          });
+        }
+        
+        // Load teams
+        const allTeams = await getTeams();
+        const memberships = await getMemberships();
+        
         // Filter to teams the user is a member of
         const userTeamIds = memberships
-          .filter(m => m.userId === user.userId)
+          .filter(m => m.userId === userId)
           .map(m => m.teamId);
         const userTeams = allTeams.filter(t => userTeamIds.includes(t.id));
         setTeams(userTeams);
+      } else {
+        // Clear teams when user logs out
+        setTeams([]);
       }
     } catch (error) {
-      console.error("Error loading teams:", error);
+      console.error("Error syncing user and loading teams:", error);
     }
   };
 
