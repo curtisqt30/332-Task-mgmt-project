@@ -4,10 +4,12 @@ import { useRouter } from "expo-router";
 import { Colors } from "../constants/theme";
 import { getUser, setUser, getTeams, getMemberships, setCurrentTeamId, type Team } from "../lib/storage";
 import { uid, initialsFromName } from "../lib/id";
+import { HamburgerButton } from "@/components/AppLayout";
 
 export default function TeamsHub() {
   const router = useRouter();
   const [name, setName] = useState("");
+  const [initials, setInitials] = useState("U");
   const [userId, setUserId] = useState<string | null>(null);
   const [teams, setTeams] = useState<Team[]>([]);
   const [myTeamIds, setMyTeamIds] = useState<string[]>([]);
@@ -21,6 +23,7 @@ export default function TeamsHub() {
       if (u) {
         setUserId(u.id); 
         setName(u.name); 
+        setInitials(u.initials);
         setMyTeamIds(m.filter(x => x.userId === u.id).map(x => x.teamId));
       }
       setTeams(t);
@@ -28,13 +31,21 @@ export default function TeamsHub() {
     })();
   }, []);
 
+  const ensureIdentity = async () => {
+    if (userId && name.trim()) return userId;
+    const id = userId ?? uid();
+    const nm = name.trim() || "User";
+    const inits = initialsFromName(nm);
+    await setUser({ id, name: nm, initials: inits });
+    setUserId(id); 
+    setInitials(inits); 
+    setName(nm);
+    return id;
+  };
+
   const goToTeam = async (teamId: string) => {
     await setCurrentTeamId(teamId);
     router.push(`/dashboard`);
-  };
-
-  const handleBack = () => {
-    router.push("/dashboard");
   };
 
   if (loading) {
@@ -71,21 +82,7 @@ export default function TeamsHub() {
         borderColor: Colors.border, 
         backgroundColor: Colors.surface 
       }}>
-        <Pressable
-          onPress={handleBack}
-          style={{
-            width: 40,
-            height: 40,
-            alignItems: "center",
-            justifyContent: "center",
-            borderRadius: 8,
-            borderWidth: 1,
-            borderColor: Colors.border,
-            backgroundColor: "#fff",
-          }}
-        >
-          <Text style={{ fontSize: 18, color: Colors.text }}>←</Text>
-        </Pressable>
+        <HamburgerButton />
 
         <Text style={{ 
           color: Colors.primary, 
@@ -132,7 +129,6 @@ export default function TeamsHub() {
         contentContainerStyle={{ padding: 20, gap: 20 }}
         showsVerticalScrollIndicator={false}
       >
-
         {/* My Teams Section (Teams I Own) */}
         <View>
           <View style={{
@@ -175,7 +171,6 @@ export default function TeamsHub() {
               padding: 24,
               alignItems: "center",
             }}>
-              <Text style={{ fontSize: 40, marginBottom: 8 }}></Text>
               <Text style={{ 
                 color: Colors.text, 
                 fontWeight: "600", 
@@ -227,7 +222,6 @@ export default function TeamsHub() {
                     shadowRadius: 3,
                   }}
                 >
-
                   {/* Team Info */}
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 }}>
@@ -260,7 +254,6 @@ export default function TeamsHub() {
                         gap: 4,
                       }}>
                         <Text style={{ color: Colors.secondary, fontSize: 12 }}>
-                          
                         </Text>
                         <Text style={{ 
                           color: Colors.secondary, 
@@ -287,7 +280,7 @@ export default function TeamsHub() {
           )}
         </View>
 
-        {/* Teams Section (Teams I'm a Member Of) */}
+        {/* Teams Section */}
         <View>
           <View style={{
             flexDirection: "row",
@@ -329,7 +322,6 @@ export default function TeamsHub() {
               padding: 24,
               alignItems: "center",
             }}>
-              <Text style={{ fontSize: 40, marginBottom: 8 }}></Text>
               <Text style={{ 
                 color: Colors.text, 
                 fontWeight: "600", 
@@ -345,7 +337,6 @@ export default function TeamsHub() {
                 lineHeight: 18,
                 marginBottom: 16,
               }}>
-                Join a team with a code to collaborate
               </Text>
               <Pressable 
                 onPress={() => router.push("/teams-join")}
@@ -414,9 +405,6 @@ export default function TeamsHub() {
                         alignItems: "center",
                         gap: 4,
                       }}>
-                        <Text style={{ color: Colors.secondary, fontSize: 12 }}>
-                          
-                        </Text>
                         <Text style={{ 
                           color: Colors.secondary, 
                           fontSize: 12,

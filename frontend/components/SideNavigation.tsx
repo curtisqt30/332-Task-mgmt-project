@@ -5,7 +5,6 @@ import { Colors } from "@/constants/theme";
 type NavigationItem = {
   id: string;
   label: string;
-  icon: string;
   href?: string;
   action?: () => void;
   type?: "section" | "item" | "divider";
@@ -13,7 +12,7 @@ type NavigationItem = {
 
 type SideNavigationProps = {
   currentView: string;
-  teams?: Array<{ id: string; name: string; code: string }>;
+  teams?: Array<{ id: string; name: string; code: string; creatorId?: string }>;
   currentUserName?: string;
   currentUserInitials?: string;
   onClose?: () => void;
@@ -39,7 +38,6 @@ export default function SideNavigation({
     { 
       id: "my-tasks", 
       label: "My Tasks", 
-      icon: "📋", 
       href: "/dashboard",
     },
     
@@ -51,19 +49,16 @@ export default function SideNavigation({
     { 
       id: "teams-hub", 
       label: "All Teams", 
-      icon: "👥", 
       href: "/teams",
     },
     { 
       id: "create-team", 
       label: "Create Team", 
-      icon: "➕", 
       href: "/teams-create",
     },
     { 
       id: "join-team", 
       label: "Join Team", 
-      icon: "🔗", 
       href: "/teams-join",
     },
     
@@ -74,7 +69,6 @@ export default function SideNavigation({
       ...teams.map(team => ({
         id: `team-${team.id}`,
         label: team.name,
-        icon: "📁",
         href: `/team-dashboard/${team.id}`,
       })),
     ] : []),
@@ -84,7 +78,6 @@ export default function SideNavigation({
     { 
       id: "sign-out", 
       label: "Sign Out", 
-      icon: "🚪", 
       href: "/login",
     },
   ];
@@ -131,11 +124,6 @@ export default function SideNavigation({
               fontWeight: "700",
             }}>
               {currentUserName}
-            </Text>
-            <Text style={{
-              color: Colors.secondary,
-              fontSize: 13,
-            }}>
             </Text>
           </View>
         </View>
@@ -199,7 +187,7 @@ export default function SideNavigation({
                 marginBottom: 4,
               }}
             >
-              <Text style={{ fontSize: 16 }}></Text>
+              <Text style={{ fontSize: 16 }}>{item.icon}</Text>
               <Text style={{
                 color: isActive ? Colors.primary : Colors.text,
                 fontWeight: isActive ? "600" : "500",
@@ -228,6 +216,7 @@ export default function SideNavigation({
           );
         })}
       </ScrollView>
+
     </View>
   );
 }

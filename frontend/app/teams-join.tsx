@@ -3,6 +3,7 @@ import { useState } from "react";
 import { View, Text, TextInput, Pressable, Alert } from "react-native";
 import { Colors } from "../constants/theme";
 import { getUser, getTeams, getMemberships, saveMemberships, setCurrentTeamId } from "../lib/storage";
+import { HamburgerButton } from "@/components/AppLayout";
 
 export default function JoinTeam() {
   const router = useRouter();
@@ -78,21 +79,7 @@ export default function JoinTeam() {
         alignItems: "center",
         gap: 12,
       }}>
-        <Pressable
-          onPress={handleCancel}
-          style={{
-            width: 40,
-            height: 40,
-            alignItems: "center",
-            justifyContent: "center",
-            borderRadius: 8,
-            borderWidth: 1,
-            borderColor: Colors.border,
-            backgroundColor: "#fff",
-          }}
-        >
-          <Text style={{ fontSize: 18, color: Colors.text }}>←</Text>
-        </Pressable>
+        <HamburgerButton />
         <Text style={{ 
           color: Colors.primary, 
           fontSize: 20, 
@@ -134,15 +121,6 @@ export default function JoinTeam() {
             Join a Team
           </Text>
           
-          <Text style={{
-            color: Colors.secondary,
-            fontSize: 14,
-            marginBottom: 24,
-            textAlign: "center",
-            lineHeight: 20,
-          }}>
-            Enter the 6-character code shared by your team leader to join
-          </Text>
 
           {/* Input */}
           <View style={{ marginBottom: 24 }}>

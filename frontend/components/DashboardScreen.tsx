@@ -1,9 +1,8 @@
-import { useMemo, useRef, useState } from "react";
-import { View, Text, TextInput, Pressable, ScrollView, Animated, Easing } from "react-native";
-import { useRouter } from "expo-router";
+import { useMemo, useState } from "react";
+import { View, Text, TextInput, Pressable, ScrollView } from "react-native";
 import { Colors } from "@/constants/theme";
 import TaskModal from "./TaskModal";
-import SideNavigation from "./SideNavigation";
+import { HamburgerButton } from "./AppLayout";
 import type { Task, Status } from "./types";
 
 type Props = {
@@ -23,8 +22,6 @@ type Props = {
 
 const statusColor = (s: Status) =>
   ({ Pending: Colors.statusPending, "In Progress": Colors.statusInProgress, Completed: Colors.statusCompleted, Overdue: Colors.statusOverdue }[s]);
-
-const DRAWER_W = 280;
 
 // Helper function to check if a date string is today
 const isToday = (dateString: string | null | undefined): boolean => {
@@ -80,11 +77,8 @@ export default function DashboardScreen({
   titleOverride,
   teams = [],
 }: Props) {
-  const router = useRouter();
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<"All" | Status>("All");
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const drawerX = useRef(new Animated.Value(-DRAWER_W)).current;
   
   // Modal states
   const [modalVisible, setModalVisible] = useState(false);
@@ -106,17 +100,6 @@ export default function DashboardScreen({
     thisWeek: tasks.filter((t) => isThisWeek(t.due)).length,
     completed: tasks.filter((t) => t.status === "Completed").length,
   }), [tasks]);
-
-  const toggleDrawer = (open?: boolean) => {
-    const next = typeof open === "boolean" ? open : !drawerOpen;
-    setDrawerOpen(next);
-    Animated.timing(drawerX, {
-      toValue: next ? 0 : -DRAWER_W,
-      duration: 200,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
-  };
 
   const headerTitle = titleOverride ?? (mode === "personal" ? "My Tasks" : `Team Tasks · ${teamId ?? ""}`);
 
@@ -160,24 +143,7 @@ export default function DashboardScreen({
         alignItems: "center", 
         gap: 12 
       }}>
-        <Pressable 
-          onPress={() => toggleDrawer()} 
-          aria-label="Open menu" 
-          style={{ 
-            width: 40, 
-            height: 40, 
-            alignItems: "center", 
-            justifyContent: "center", 
-            borderRadius: 8, 
-            borderWidth: 1, 
-            borderColor: Colors.border, 
-            backgroundColor: "#fff" 
-          }}
-        >
-          <View style={{ width: 18, height: 2, backgroundColor: Colors.text, marginBottom: 3 }} />
-          <View style={{ width: 18, height: 2, backgroundColor: Colors.text, marginBottom: 3 }} />
-          <View style={{ width: 18, height: 2, backgroundColor: Colors.text }} />
-        </Pressable>
+        <HamburgerButton />
 
         <Text style={{ color: Colors.primary, fontSize: 20, fontWeight: "700" }}>{headerTitle}</Text>
 
@@ -263,7 +229,6 @@ export default function DashboardScreen({
                     marginBottom: 10, 
                     borderWidth: 1, 
                     borderColor: Colors.border,
-                    // Add hover effect on web
                     cursor: "pointer",
                   }}
                 >
@@ -313,7 +278,6 @@ export default function DashboardScreen({
                     <Text style={{ color: statusColor(t.status), fontWeight: "600" }}>{t.status}</Text>
                   </View>
 
-                  {/* Show description below the title row */}
                   {t.description && (
                     <Text 
                       style={{ 
@@ -349,25 +313,13 @@ export default function DashboardScreen({
           </ScrollView>
         </View>
 
-        {/* Right rail - Stats (now stacked vertically) */}
+        {/* Right rail - Stats (stacked vertically) */}
         <View style={{ width: 280, gap: 12 }}>
           {[
-            { 
-              label: "Due Today", 
-              value: stats.dueToday
-            },
-            { 
-              label: "Overdue", 
-              value: stats.overdue
-            },
-            { 
-              label: "This Week", 
-              value: stats.thisWeek
-            },
-            { 
-              label: "Completed", 
-              value: stats.completed
-            },
+            { label: "Due Today", value: stats.dueToday },
+            { label: "Overdue", value: stats.overdue },
+            { label: "This Week", value: stats.thisWeek },
+            { label: "Completed", value: stats.completed },
           ].map((kpi) => (
             <View 
               key={kpi.label} 
@@ -396,40 +348,6 @@ export default function DashboardScreen({
         onDelete={handleModalDelete}
         teamMode={mode === "team"}
       />
-
-      {/* Drawer overlay */}
-      {drawerOpen && (
-        <Pressable 
-          onPress={() => toggleDrawer(false)} 
-          style={{ position: "absolute", inset: 0, backgroundColor: "rgba(0,0,0,0.2)" }} 
-        />
-      )}
-
-      {/* Drawer panel with SideNavigation */}
-      <Animated.View
-        style={{
-          position: "absolute",
-          top: 0,
-          bottom: 0,
-          left: 0,
-          width: DRAWER_W,
-          transform: [{ translateX: drawerX }],
-          shadowColor: "#000",
-          shadowOpacity: 0.08,
-          shadowOffset: { width: 2, height: 0 },
-          shadowRadius: 6,
-          elevation: 5,
-          zIndex: 1000,
-        }}
-      >
-        <SideNavigation
-          currentView={mode === "personal" ? "my-tasks" : `team-${teamId}`}
-          teams={teams}
-          currentUserName={currentUserName}
-          currentUserInitials={currentUserInitials}
-          onClose={() => toggleDrawer(false)}
-        />
-      </Animated.View>
     </View>
   );
 }

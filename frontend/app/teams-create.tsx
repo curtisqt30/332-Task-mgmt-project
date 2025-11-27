@@ -4,6 +4,7 @@ import { View, Text, TextInput, Pressable, Alert } from "react-native";
 import { Colors } from "../constants/theme";
 import { getTeams, saveTeams, getUser, getMemberships, saveMemberships, setCurrentTeamId } from "../lib/storage";
 import { uid, joinCode } from "../lib/id";
+import { HamburgerButton } from "@/components/AppLayout";
 
 export default function CreateTeam() {
   const router = useRouter();
@@ -65,21 +66,7 @@ export default function CreateTeam() {
         alignItems: "center",
         gap: 12,
       }}>
-        <Pressable
-          onPress={handleCancel}
-          style={{
-            width: 40,
-            height: 40,
-            alignItems: "center",
-            justifyContent: "center",
-            borderRadius: 8,
-            borderWidth: 1,
-            borderColor: Colors.border,
-            backgroundColor: "#fff",
-          }}
-        >
-          <Text style={{ fontSize: 18, color: Colors.text }}>←</Text>
-        </Pressable>
+        <HamburgerButton />
         <Text style={{ 
           color: Colors.primary, 
           fontSize: 20, 
@@ -128,7 +115,6 @@ export default function CreateTeam() {
             textAlign: "center",
             lineHeight: 20,
           }}>
-            You'll receive a shareable code to invite members.
           </Text>
 
           {/* Input */}
