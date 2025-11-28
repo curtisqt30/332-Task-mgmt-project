@@ -181,7 +181,7 @@ export default function TaskModal({
                 color: Colors.text,
                 marginBottom: 8,
               }}>
-                Title <Text style={{ color: "#ef4444" }}>*</Text>
+                Title
               </Text>
               <TextInput
                 value={title}
@@ -218,7 +218,7 @@ export default function TaskModal({
               <TextInput
                 value={description}
                 onChangeText={setDescription}
-                placeholder="Add task details (optional)"
+                placeholder="Add task description"
                 placeholderTextColor={Colors.secondary}
                 multiline
                 numberOfLines={4}

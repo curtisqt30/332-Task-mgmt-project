@@ -109,17 +109,12 @@ export default function CreateTeam() {
           <Text style={{ color: Colors.text, fontWeight: "700", fontSize: 22, marginBottom: 8, textAlign: "center" }}>
             Create a New Team
           </Text>
-          
-          <Text style={{ color: Colors.secondary, fontSize: 14, marginBottom: 24, textAlign: "center" }}>
-            You'll be the team owner
-          </Text>
+        
 
           <View style={{ marginBottom: 24 }}>
-            <Text style={{ fontSize: 14, fontWeight: "600", color: Colors.text, marginBottom: 8 }}>
-              Team Name <Text style={{ color: "#ef4444" }}>*</Text>
-            </Text>
+
             <TextInput 
-              placeholder="e.g., CSUF 332 Project Team" 
+              placeholder="Enter team name" 
               value={name} 
               onChangeText={setName}
               autoFocus

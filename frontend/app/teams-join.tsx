@@ -160,15 +160,6 @@ export default function JoinTeam() {
             Join a Team
           </Text>
           
-          <Text style={{
-            color: Colors.secondary,
-            fontSize: 14,
-            marginBottom: 24,
-            textAlign: "center",
-            lineHeight: 20,
-          }}>
-            Enter the 6-character code
-          </Text>
 
           {/* Input */}
           <View style={{ marginBottom: 24 }}>
@@ -178,7 +169,6 @@ export default function JoinTeam() {
               color: Colors.text,
               marginBottom: 8,
             }}>
-              Team Code <Text style={{ color: "#ef4444" }}>*</Text>
             </Text>
             <TextInput
               placeholder="Enter 6-character code"
