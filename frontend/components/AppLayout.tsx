@@ -1,10 +1,10 @@
-import { ReactNode, useRef, useState, createContext, useContext, useEffect } from "react";
+import { ReactNode, useRef, useState, createContext, useContext, useEffect, useCallback } from "react";
 import { View, Pressable, Animated, Easing } from "react-native";
 import { usePathname, useLocalSearchParams, useSegments } from "expo-router";
 import { Colors } from "@/constants/theme";
 import SideNavigation from "./SideNavigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { getTeams, getMemberships, getUser, setUser, type Team } from "@/lib/storage";
+import { getTeams, getMemberships, setUser, type Team } from "@/lib/storage";
 import { initialsFromName } from "@/lib/id";
 
 const DRAWER_W = 280;
@@ -12,6 +12,7 @@ const DRAWER_W = 280;
 type DrawerContextType = {
   toggleDrawer: (open?: boolean) => void;
   isOpen: boolean;
+  refreshTeams: () => Promise<void>;
 };
 
 const DrawerContext = createContext<DrawerContextType | undefined>(undefined);
@@ -37,46 +38,44 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const [teams, setTeams] = useState<Team[]>([]);
   const drawerX = useRef(new Animated.Value(-DRAWER_W)).current;
 
-  // Sync backend user with local storage and load teams
-  useEffect(() => {
-    syncUserAndLoadTeams();
-  }, [user]);
-
-  const syncUserAndLoadTeams = async () => {
+  const syncUserAndLoadTeams = useCallback(async () => {
     try {
       if (user) {
-        // Sync backend user to local storage
-        const localUser = await getUser();
-        const userId = String(user.userId); // Convert backend userId to string
+        const userId = String(user.userId);
+        const initials = initialsFromName(user.userName);
         
-        // Create or update local user to match backend user
-        if (!localUser || localUser.id !== userId) {
-          const initials = initialsFromName(user.userName);
-          await setUser({
-            id: userId,
-            name: user.userName,
-            initials: initials,
-          });
-        }
+        await setUser({
+          id: userId,
+          name: user.userName,
+          initials: initials,
+        });
         
-        // Load teams
         const allTeams = await getTeams();
         const memberships = await getMemberships();
         
-        // Filter to teams the user is a member of
         const userTeamIds = memberships
           .filter(m => m.userId === userId)
           .map(m => m.teamId);
         const userTeams = allTeams.filter(t => userTeamIds.includes(t.id));
         setTeams(userTeams);
       } else {
-        // Clear teams when user logs out
         setTeams([]);
       }
     } catch (error) {
-      console.error("Error syncing user and loading teams:", error);
+      console.error("Error loading teams:", error);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    syncUserAndLoadTeams();
+  }, [user]);
+
+  // Refresh teams when drawer opens
+  useEffect(() => {
+    if (drawerOpen && user) {
+      syncUserAndLoadTeams();
+    }
+  }, [drawerOpen, user]);
 
   const toggleDrawer = (open?: boolean) => {
     const next = typeof open === "boolean" ? open : !drawerOpen;
@@ -89,24 +88,20 @@ export default function AppLayout({ children }: AppLayoutProps) {
     }).start();
   };
 
-  // Determine current view based on pathname and params
   const getCurrentView = (): string => {
     if (!pathname) return "my-tasks";
     
-    // Map pathnames to view IDs
     if (pathname === "/dashboard" || pathname === "/") return "my-tasks";
     if (pathname === "/teams") return "teams-hub";
     if (pathname === "/teams-create") return "create-team";
     if (pathname === "/teams-join") return "join-team";
     if (pathname === "/login") return "sign-out";
     
-    // Handle team dashboard with path params: /team-dashboard/[id]
     if (pathname.startsWith("/team-dashboard/")) {
       const teamId = segments[segments.length - 1];
       return `team-${teamId}`;
     }
     
-    // Handle team dashboard with query params: /team-dashboard?teamId=xxx
     if (pathname === "/team-dashboard" && params.teamId) {
       return `team-${params.teamId}`;
     }
@@ -119,7 +114,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const userName = user?.userName || "User";
 
   return (
-    <DrawerContext.Provider value={{ toggleDrawer, isOpen: drawerOpen }}>
+    <DrawerContext.Provider value={{ toggleDrawer, isOpen: drawerOpen, refreshTeams: syncUserAndLoadTeams }}>
       <View style={{ flex: 1, backgroundColor: Colors.background }}>
         {children}
 
@@ -131,7 +126,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
           />
         )}
 
-        {/* Drawer panel with SideNavigation */}
+        {/* Drawer panel */}
         <Animated.View
           style={{
             position: "absolute",
@@ -161,14 +156,12 @@ export default function AppLayout({ children }: AppLayoutProps) {
   );
 }
 
-// Hamburger menu button component - can be used anywhere
 export function HamburgerButton() {
   const { toggleDrawer } = useDrawer();
   
   return (
     <Pressable 
       onPress={() => toggleDrawer()} 
-      aria-label="Open menu" 
       style={{ 
         width: 40, 
         height: 40, 

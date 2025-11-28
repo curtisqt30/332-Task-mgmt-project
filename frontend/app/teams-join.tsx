@@ -128,18 +128,6 @@ export default function JoinTeam() {
         </Text>
       </View>
 
-      {/* Debug Info */}
-      <View style={{
-        backgroundColor: "#fffbeb",
-        borderBottomWidth: 1,
-        borderBottomColor: "#fbbf24",
-        padding: 8,
-      }}>
-        <Text style={{ color: "#92400e", fontSize: 11, fontFamily: "monospace" }}>
-          Logged in as: {authUser.userName} (ID: {authUser.userId})
-        </Text>
-      </View>
-
       {/* Content */}
       <View style={{ 
         flex: 1,
@@ -179,7 +167,7 @@ export default function JoinTeam() {
             textAlign: "center",
             lineHeight: 20,
           }}>
-            Enter the 6-character code from the team owner
+            Enter the 6-character code
           </Text>
 
           {/* Input */}

@@ -3,7 +3,7 @@ import React, { createContext, useState, useContext, useEffect } from "react";
 const API = process.env.EXPO_PUBLIC_API_BASE ?? "http://localhost:8000";
 
 type User = {
-  userID: number;
+  userId: number;
   userName: string;
 };
 
@@ -21,7 +21,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Check if logged in on mount
   useEffect(() => {
     checkAuth();
   }, []);
@@ -29,15 +28,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const checkAuth = async () => {
     try {
       const response = await fetch(`${API}/api/auth/me`, {
-        credentials: "include", // Important for sessions
+        credentials: "include",
       });
       
       if (response.ok) {
         const userData = await response.json();
-        setUser(userData);
+        // Map backend userID to frontend userId
+        setUser({
+          userId: userData.userID,
+          userName: userData.userName,
+        });
       }
     } catch (error) {
-      console.error("Auth check error:", error);
+      // Not logged in or server error - that's fine
     } finally {
       setLoading(false);
     }
@@ -57,7 +60,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const data = await response.json();
-    setUser(data.user);
+    // Map backend userID to frontend userId
+    setUser({
+      userId: data.user.userID,
+      userName: data.user.userName,
+    });
   };
 
   const register = async (username: string, password: string) => {
@@ -74,7 +81,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const data = await response.json();
-    setUser(data.user);
+    // Map backend userID to frontend userId
+    setUser({
+      userId: data.user.userID,
+      userName: data.user.userName,
+    });
   };
 
   const logout = async () => {
@@ -84,7 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         credentials: "include",
       });
     } catch (error) {
-      console.error("Logout error:", error);
+      // Ignore logout errors
     }
     setUser(null);
   };

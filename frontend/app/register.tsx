@@ -9,19 +9,14 @@ export default function Register() {
   const { register } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleRegister = async () => {
-    if (!username.trim() || !password.trim() || !confirm.trim()) {
+    if (!username.trim() || !password.trim()) {
       Alert.alert("Missing fields", "Please fill out all fields.");
       return;
     }
-    
-    if (password !== confirm) {
-      Alert.alert("Passwords do not match");
-      return;
-    }
+
 
     setLoading(true);
     try {
@@ -61,16 +56,6 @@ export default function Register() {
           editable={!loading}
         />
 
-        <Text style={{ marginBottom: 6, color: Colors.text, fontWeight: "600" }}>Confirm Password</Text>
-        <TextInput
-          style={{ borderWidth: 1, borderColor: Colors.border, borderRadius: 8, padding: 12, marginBottom: 24, fontSize: 15 }}
-          placeholder="Re-enter password"
-          secureTextEntry
-          value={confirm}
-          onChangeText={setConfirm}
-          editable={!loading}
-        />
-
         <Pressable
           onPress={handleRegister}
           disabled={loading}
@@ -84,7 +69,7 @@ export default function Register() {
 
         <Pressable onPress={() => router.push("/login")} style={{ marginTop: 16 }} disabled={loading}>
           <Text style={{ textAlign: "center", color: Colors.accent, fontWeight: "500" }}>
-            Already have an account? Log in
+           Log in
           </Text>
         </Pressable>
       </View>

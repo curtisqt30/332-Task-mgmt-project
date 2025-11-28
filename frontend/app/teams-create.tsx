@@ -11,11 +11,11 @@ export default function CreateTeam() {
   const router = useRouter();
   const { user: authUser, loading: authLoading } = useAuth();
   const [name, setName] = useState("");
+  const [creating, setCreating] = useState(false);
 
-  // Redirect if not logged in after auth loads
+  // Redirect if not logged in
   useEffect(() => {
     if (!authLoading && !authUser) {
-      console.log("No auth user, redirecting to login");
       router.replace("/login");
     }
   }, [authLoading, authUser]);
@@ -27,75 +27,59 @@ export default function CreateTeam() {
       return;
     }
     
-    // Double-check authentication
     if (!authUser) {
       Alert.alert("Not logged in", "Please log in to create a team.");
       router.replace("/login");
       return;
     }
 
-    console.log("Auth user:", authUser);
-    
-    // CRITICAL: Use backend user ID as creator ID (convert to string for consistency)
+    setCreating(true);
     const creatorUserId = String(authUser.userId);
     
-    console.log("Creating team with creator ID:", creatorUserId, "Type:", typeof creatorUserId);
-    
-    const teams = await getTeams();
-    const id = uid(8);
-    const code = joinCode();
-    const newTeam = { 
-      id, 
-      name: nm, 
-      code, 
-      createdAt: new Date().toISOString(),
-      creatorId: creatorUserId, // Use backend user ID
-    };
-    
-    console.log("New team object:", newTeam);
-    
-    await saveTeams([newTeam, ...teams]);
+    try {
+      const teams = await getTeams();
+      const id = uid(8);
+      const code = joinCode();
+      const newTeam = { 
+        id, 
+        name: nm, 
+        code, 
+        createdAt: new Date().toISOString(),
+        creatorId: creatorUserId,
+      };
+      
+      await saveTeams([newTeam, ...teams]);
 
-    const memberships = await getMemberships();
-    await saveMemberships([{ userId: creatorUserId, teamId: id }, ...memberships]);
-    await setCurrentTeamId(id);
-    
-    Alert.alert(
-      "Team Created!",
-      `Your team "${nm}" has been created.\n\nShare code: ${code}`,
-      [{ text: "OK", onPress: () => router.replace("/teams") }]
-    );
+      const memberships = await getMemberships();
+      await saveMemberships([{ userId: creatorUserId, teamId: id }, ...memberships]);
+      await setCurrentTeamId(id);
+      
+      setCreating(false);
+      
+      Alert.alert(
+        "Team Created!",
+        `Your team "${nm}" has been created.\n\nShare code: ${code}`,
+        [{ text: "Go to Team", onPress: () => router.replace(`/team-dashboard/${id}`) }]
+      );
+    } catch (error) {
+      console.error("Error creating team:", error);
+      setCreating(false);
+      Alert.alert("Error", "Failed to create team. Please try again.");
+    }
   };
 
-  const handleCancel = () => {
-    router.back();
-  };
-
-  // Show loading while auth is loading
   if (authLoading) {
     return (
-      <View style={{ 
-        flex: 1, 
-        backgroundColor: Colors.background,
-        alignItems: "center",
-        justifyContent: "center",
-      }}>
+      <View style={{ flex: 1, backgroundColor: Colors.background, alignItems: "center", justifyContent: "center" }}>
         <ActivityIndicator size="large" color={Colors.primary} />
-        <Text style={{ marginTop: 12, color: Colors.secondary }}>Loading...</Text>
       </View>
     );
   }
 
-  // Don't render if no user (redirect will happen)
-  if (!authUser) {
-    return null;
-  }
+  if (!authUser) return null;
 
   return (
-    <View style={{ 
-      flex: 1, 
-      backgroundColor: Colors.background,
-    }}>
+    <View style={{ flex: 1, backgroundColor: Colors.background }}>
       {/* Header */}
       <View style={{
         paddingHorizontal: 20,
@@ -108,34 +92,11 @@ export default function CreateTeam() {
         gap: 12,
       }}>
         <HamburgerButton />
-        <Text style={{ 
-          color: Colors.primary, 
-          fontSize: 20, 
-          fontWeight: "700" 
-        }}>
-          Create Team
-        </Text>
-      </View>
-
-      {/* Debug Info */}
-      <View style={{
-        backgroundColor: "#fffbeb",
-        borderBottomWidth: 1,
-        borderBottomColor: "#fbbf24",
-        padding: 8,
-      }}>
-        <Text style={{ color: "#92400e", fontSize: 11, fontFamily: "monospace" }}>
-          Logged in as: {authUser.userName} (ID: {authUser.userId})
-        </Text>
+        <Text style={{ color: Colors.primary, fontSize: 20, fontWeight: "700" }}>Create Team</Text>
       </View>
 
       {/* Content */}
-      <View style={{ 
-        flex: 1,
-        alignItems: "center", 
-        justifyContent: "center", 
-        padding: 16 
-      }}>
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 16 }}>
         <View style={{ 
           width: "100%", 
           maxWidth: 500, 
@@ -144,41 +105,17 @@ export default function CreateTeam() {
           borderColor: Colors.border, 
           borderRadius: 16, 
           padding: 24,
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.05,
-          shadowRadius: 8,
         }}>
-
-          {/* Title */}
-          <Text style={{ 
-            color: Colors.text, 
-            fontWeight: "700", 
-            fontSize: 22, 
-            marginBottom: 8,
-            textAlign: "center",
-          }}>
+          <Text style={{ color: Colors.text, fontWeight: "700", fontSize: 22, marginBottom: 8, textAlign: "center" }}>
             Create a New Team
           </Text>
           
-          <Text style={{
-            color: Colors.secondary,
-            fontSize: 14,
-            marginBottom: 24,
-            textAlign: "center",
-            lineHeight: 20,
-          }}>
+          <Text style={{ color: Colors.secondary, fontSize: 14, marginBottom: 24, textAlign: "center" }}>
             You'll be the team owner
           </Text>
 
-          {/* Input */}
           <View style={{ marginBottom: 24 }}>
-            <Text style={{
-              fontSize: 14,
-              fontWeight: "600",
-              color: Colors.text,
-              marginBottom: 8,
-            }}>
+            <Text style={{ fontSize: 14, fontWeight: "600", color: Colors.text, marginBottom: 8 }}>
               Team Name <Text style={{ color: "#ef4444" }}>*</Text>
             </Text>
             <TextInput 
@@ -186,6 +123,7 @@ export default function CreateTeam() {
               value={name} 
               onChangeText={setName}
               autoFocus
+              editable={!creating}
               style={{ 
                 borderWidth: 1, 
                 borderColor: Colors.border, 
@@ -194,17 +132,15 @@ export default function CreateTeam() {
                 paddingHorizontal: 14, 
                 paddingVertical: 12,
                 fontSize: 15,
+                opacity: creating ? 0.6 : 1,
               }} 
             />
           </View>
 
-          {/* Buttons */}
-          <View style={{
-            flexDirection: "row",
-            gap: 12,
-          }}>
+          <View style={{ flexDirection: "row", gap: 12 }}>
             <Pressable 
-              onPress={handleCancel} 
+              onPress={() => router.back()} 
+              disabled={creating}
               style={{ 
                 flex: 1,
                 paddingVertical: 12, 
@@ -212,34 +148,29 @@ export default function CreateTeam() {
                 borderWidth: 1,
                 borderColor: Colors.border,
                 backgroundColor: "white",
+                opacity: creating ? 0.6 : 1,
               }}
             >
-              <Text style={{ 
-                color: Colors.text, 
-                textAlign: "center", 
-                fontWeight: "600",
-                fontSize: 15,
-              }}>
-                Cancel
-              </Text>
+              <Text style={{ color: Colors.text, textAlign: "center", fontWeight: "600", fontSize: 15 }}>Cancel</Text>
             </Pressable>
 
             <Pressable 
               onPress={create} 
+              disabled={creating}
               style={{ 
                 flex: 1,
-                backgroundColor: Colors.primary, 
+                backgroundColor: creating ? "#94A3B8" : Colors.primary, 
                 paddingVertical: 12, 
                 borderRadius: 8,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
               }}
             >
-              <Text style={{ 
-                color: "white", 
-                textAlign: "center", 
-                fontWeight: "700",
-                fontSize: 15,
-              }}>
-                Create Team
+              {creating && <ActivityIndicator size="small" color="white" />}
+              <Text style={{ color: "white", textAlign: "center", fontWeight: "700", fontSize: 15 }}>
+                {creating ? "Creating..." : "Create Team"}
               </Text>
             </Pressable>
           </View>
