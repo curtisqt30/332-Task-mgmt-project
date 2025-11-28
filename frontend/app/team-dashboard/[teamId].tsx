@@ -1,46 +1,62 @@
 import { useCallback, useEffect, useState } from "react";
-import { useLocalSearchParams } from "expo-router";
-import { useAuth } from "@/contexts/AuthContext";
-import { useRouter } from "expo-router";
-import DashboardScreen from "@/components/DashboardScreen";
-import type { Task } from "@/components/types";
-import { getTeams } from "@/lib/storage";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useAuth } from "../../contexts/AuthContext";
+import DashboardScreen from "../../components/DashboardScreen";
+import type { Task } from "../../components/types";
+import { getTeams } from "../../lib/storage";
 
 const API = process.env.EXPO_PUBLIC_API_BASE ?? "http://localhost:8000";
 
 export default function TeamDashboard() {
   const router = useRouter();
-  const { teamId } = useLocalSearchParams<{ teamId: string }>();
+  // This will get the teamId from the URL path: /team-dashboard/[teamId]
+  const params = useLocalSearchParams<{ teamId?: string }>();
+  const teamId = params.teamId;
+  
   const { user, loading: authLoading } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [teamName, setTeamName] = useState("");
 
+  console.log("Team Dashboard - params:", params);
+  console.log("Team Dashboard - teamId:", teamId);
+
   // Redirect if not logged in
   useEffect(() => {
     if (!authLoading && !user) {
+      console.log("Not authenticated, redirecting to login");
       router.replace("/login");
     }
   }, [authLoading, user]);
 
   // Load team info and tasks
   const load = useCallback(async () => {
-    if (!teamId || !user) return;
+    if (!teamId || !user) {
+      console.log("Missing teamId or user", { teamId, user: !!user });
+      return;
+    }
     
+    console.log("Loading team data for teamId:", teamId);
     setLoading(true);
     try {
       // Load team name from storage
       const teams = await getTeams();
+      console.log("All teams:", teams);
+      
       const team = teams.find(t => t.id === teamId);
+      console.log("Found team:", team);
+      
       if (team) {
         setTeamName(team.name);
+      } else {
+        console.warn("Team not found in storage:", teamId);
       }
       
       // TODO: Load actual team tasks from API when backend is ready
       // For now, mock data
       setTasks([
         {
-          id: `team-task-1`,
+          id: `team-task-1-${teamId}`,
           title: "Complete Project Synopsis",
           status: "In Progress",
           description: "Finalize the project documentation for CPSC 332",
@@ -53,7 +69,7 @@ export default function TeamDashboard() {
           ],
         },
         {
-          id: `team-task-2`,
+          id: `team-task-2-${teamId}`,
           title: "Database Schema Review",
           status: "Pending",
           description: "Review and optimize the relational schema",
@@ -65,7 +81,7 @@ export default function TeamDashboard() {
           ],
         },
         {
-          id: `team-task-3`,
+          id: `team-task-3-${teamId}`,
           title: "Implement User Authentication",
           status: "Completed",
           description: "Add login and registration functionality",
@@ -85,12 +101,15 @@ export default function TeamDashboard() {
   }, [teamId, user]);
 
   useEffect(() => {
-    if (user) load();
-  }, [load, user]);
+    if (user && teamId) {
+      console.log("Calling load()");
+      load();
+    }
+  }, [load, user, teamId]);
 
   // Add team task
   const onAddTask = async (title: string, description?: string | null, due?: string | null) => {
-    if (!user) return;
+    if (!user || !teamId) return;
     
     const newTask: Task = {
       id: `team-task-${Date.now()}`,
@@ -143,6 +162,12 @@ export default function TeamDashboard() {
   };
 
   if (authLoading || !user) {
+    console.log("Waiting for auth...");
+    return null;
+  }
+
+  if (!teamId) {
+    console.log("No teamId provided!");
     return null;
   }
 

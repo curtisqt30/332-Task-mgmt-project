@@ -1,14 +1,24 @@
 import { useRouter } from "expo-router";
-import { useState } from "react";
-import { View, Text, TextInput, Pressable, Alert } from "react-native";
+import { useState, useEffect } from "react";
+import { View, Text, TextInput, Pressable, Alert, ActivityIndicator } from "react-native";
 import { Colors } from "../constants/theme";
-import { getTeams, saveTeams, getUser, getMemberships, saveMemberships, setCurrentTeamId } from "../lib/storage";
+import { getTeams, saveTeams, getMemberships, saveMemberships, setCurrentTeamId } from "../lib/storage";
 import { uid, joinCode } from "../lib/id";
 import { HamburgerButton } from "@/components/AppLayout";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function CreateTeam() {
   const router = useRouter();
+  const { user: authUser, loading: authLoading } = useAuth();
   const [name, setName] = useState("");
+
+  // Redirect if not logged in after auth loads
+  useEffect(() => {
+    if (!authLoading && !authUser) {
+      console.log("No auth user, redirecting to login");
+      router.replace("/login");
+    }
+  }, [authLoading, authUser]);
 
   const create = async () => {
     const nm = name.trim();
@@ -17,11 +27,19 @@ export default function CreateTeam() {
       return;
     }
     
-    const user = await getUser();
-    if (!user) {
-      Alert.alert("Set your display name first on the Teams page.");
+    // Double-check authentication
+    if (!authUser) {
+      Alert.alert("Not logged in", "Please log in to create a team.");
+      router.replace("/login");
       return;
     }
+
+    console.log("Auth user:", authUser);
+    
+    // CRITICAL: Use backend user ID as creator ID (convert to string for consistency)
+    const creatorUserId = String(authUser.userId);
+    
+    console.log("Creating team with creator ID:", creatorUserId, "Type:", typeof creatorUserId);
     
     const teams = await getTeams();
     const id = uid(8);
@@ -31,24 +49,47 @@ export default function CreateTeam() {
       name: nm, 
       code, 
       createdAt: new Date().toISOString(),
-      creatorId: user.id, // Track who created the team
+      creatorId: creatorUserId, // Use backend user ID
     };
+    
+    console.log("New team object:", newTeam);
+    
     await saveTeams([newTeam, ...teams]);
 
     const memberships = await getMemberships();
-    await saveMemberships([{ userId: user.id, teamId: id }, ...memberships]);
+    await saveMemberships([{ userId: creatorUserId, teamId: id }, ...memberships]);
     await setCurrentTeamId(id);
     
     Alert.alert(
       "Team Created!",
       `Your team "${nm}" has been created.\n\nShare code: ${code}`,
-      [{ text: "OK", onPress: () => router.replace("/dashboard") }]
+      [{ text: "OK", onPress: () => router.replace("/teams") }]
     );
   };
 
   const handleCancel = () => {
     router.back();
   };
+
+  // Show loading while auth is loading
+  if (authLoading) {
+    return (
+      <View style={{ 
+        flex: 1, 
+        backgroundColor: Colors.background,
+        alignItems: "center",
+        justifyContent: "center",
+      }}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+        <Text style={{ marginTop: 12, color: Colors.secondary }}>Loading...</Text>
+      </View>
+    );
+  }
+
+  // Don't render if no user (redirect will happen)
+  if (!authUser) {
+    return null;
+  }
 
   return (
     <View style={{ 
@@ -73,6 +114,18 @@ export default function CreateTeam() {
           fontWeight: "700" 
         }}>
           Create Team
+        </Text>
+      </View>
+
+      {/* Debug Info */}
+      <View style={{
+        backgroundColor: "#fffbeb",
+        borderBottomWidth: 1,
+        borderBottomColor: "#fbbf24",
+        padding: 8,
+      }}>
+        <Text style={{ color: "#92400e", fontSize: 11, fontFamily: "monospace" }}>
+          Logged in as: {authUser.userName} (ID: {authUser.userId})
         </Text>
       </View>
 
@@ -115,6 +168,7 @@ export default function CreateTeam() {
             textAlign: "center",
             lineHeight: 20,
           }}>
+            You'll be the team owner
           </Text>
 
           {/* Input */}

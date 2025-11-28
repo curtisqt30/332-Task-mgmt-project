@@ -1,13 +1,23 @@
 import { useRouter } from "expo-router";
-import { useState } from "react";
-import { View, Text, TextInput, Pressable, Alert } from "react-native";
+import { useState, useEffect } from "react";
+import { View, Text, TextInput, Pressable, Alert, ActivityIndicator } from "react-native";
 import { Colors } from "../constants/theme";
-import { getUser, getTeams, getMemberships, saveMemberships, setCurrentTeamId } from "../lib/storage";
+import { getTeams, getMemberships, saveMemberships, setCurrentTeamId } from "../lib/storage";
 import { HamburgerButton } from "@/components/AppLayout";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function JoinTeam() {
   const router = useRouter();
+  const { user: authUser, loading: authLoading } = useAuth();
   const [code, setCode] = useState("");
+
+  // Redirect if not logged in after auth loads
+  useEffect(() => {
+    if (!authLoading && !authUser) {
+      console.log("No auth user, redirecting to login");
+      router.replace("/login");
+    }
+  }, [authLoading, authUser]);
 
   const join = async () => {
     const trimmedCode = code.trim().toUpperCase();
@@ -22,12 +32,19 @@ export default function JoinTeam() {
       return;
     }
 
-    const user = await getUser();
-    if (!user) {
-      Alert.alert("Set your display name first on the Teams page.");
+    // Double-check authentication
+    if (!authUser) {
+      Alert.alert("Not logged in", "Please log in to join a team.");
+      router.replace("/login");
       return;
     }
 
+    console.log("Auth user:", authUser);
+    
+    const userId = String(authUser.userId);
+    
+    console.log("Joining team as user ID:", userId, "Type:", typeof userId);
+    
     const teams = await getTeams();
     const team = teams.find(t => t.code.toUpperCase() === trimmedCode);
     
@@ -37,31 +54,53 @@ export default function JoinTeam() {
     }
 
     const memberships = await getMemberships();
-    const already = memberships.some(m => m.userId === user.id && m.teamId === team.id);
+    const already = memberships.some(m => m.userId === userId && m.teamId === team.id);
     
     if (already) {
       Alert.alert(
         "Already a member",
         `You're already part of "${team.name}".`,
-        [{ text: "OK", onPress: () => router.replace("/dashboard") }]
+        [{ text: "OK", onPress: () => router.replace("/teams") }]
       );
       return;
     }
 
-    memberships.unshift({ userId: user.id, teamId: team.id });
+    console.log("Adding membership:", { userId, teamId: team.id });
+    
+    memberships.unshift({ userId: userId, teamId: team.id });
     await saveMemberships(memberships);
     await setCurrentTeamId(team.id);
     
     Alert.alert(
       "Joined Team!",
       `You've successfully joined "${team.name}".`,
-      [{ text: "OK", onPress: () => router.replace("/dashboard") }]
+      [{ text: "OK", onPress: () => router.replace("/teams") }]
     );
   };
 
   const handleCancel = () => {
     router.back();
   };
+
+  // Show loading while auth is loading
+  if (authLoading) {
+    return (
+      <View style={{ 
+        flex: 1, 
+        backgroundColor: Colors.background,
+        alignItems: "center",
+        justifyContent: "center",
+      }}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+        <Text style={{ marginTop: 12, color: Colors.secondary }}>Loading...</Text>
+      </View>
+    );
+  }
+
+  // Don't render if no user (redirect will happen)
+  if (!authUser) {
+    return null;
+  }
 
   return (
     <View style={{ 
@@ -86,6 +125,18 @@ export default function JoinTeam() {
           fontWeight: "700" 
         }}>
           Join Team
+        </Text>
+      </View>
+
+      {/* Debug Info */}
+      <View style={{
+        backgroundColor: "#fffbeb",
+        borderBottomWidth: 1,
+        borderBottomColor: "#fbbf24",
+        padding: 8,
+      }}>
+        <Text style={{ color: "#92400e", fontSize: 11, fontFamily: "monospace" }}>
+          Logged in as: {authUser.userName} (ID: {authUser.userId})
         </Text>
       </View>
 
@@ -121,6 +172,15 @@ export default function JoinTeam() {
             Join a Team
           </Text>
           
+          <Text style={{
+            color: Colors.secondary,
+            fontSize: 14,
+            marginBottom: 24,
+            textAlign: "center",
+            lineHeight: 20,
+          }}>
+            Enter the 6-character code from the team owner
+          </Text>
 
           {/* Input */}
           <View style={{ marginBottom: 24 }}>
@@ -153,13 +213,6 @@ export default function JoinTeam() {
                 color: Colors.text,
               }}
             />
-            <Text style={{
-              color: Colors.secondary,
-              fontSize: 12,
-              marginTop: 6,
-              textAlign: "center",
-            }}>
-            </Text>
           </View>
 
           {/* Buttons */}
