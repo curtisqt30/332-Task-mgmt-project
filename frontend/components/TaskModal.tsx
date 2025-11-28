@@ -5,37 +5,40 @@ import DeleteConfirmModal from "./DeleteConfirmModal";
 import DatePicker from "./DatePicker";
 import type { Task, Status } from "./types";
 
-type TeamMember = { userID: number; userName: string; role: string };
-
 type TaskModalProps = {
   visible: boolean;
   mode: "create" | "edit";
-  task?: Task | null;
+  task?: Task | null; // For edit mode
   onClose: () => void;
-  onSave: (data: { title: string; description?: string | null; due?: string | null; status?: Status }) => void;
-  onDelete?: (taskId: Task["id"]) => void;
-  teamMode?: boolean;
-  teamMembers?: TeamMember[];
-  onAssign?: (taskId: Task["id"], userID: number) => void;
-  onUnassign?: (taskId: Task["id"], userID: number) => void;
+  onSave: (data: {
+    title: string;
+    description?: string | null;
+    due?: string | null;
+    status?: Status;
+    assignees?: string[]; // TODO: Implement assignee selection based on team roster
+  }) => void;
+  onDelete?: (taskId: Task["id"]) => void; // For delete in edit mode
+  teamMode?: boolean; // TODO: When true, show assignee selection
 };
 
-const stringToColor = (str: string): string => {
-  const colors = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899", "#06B6D4"];
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
-  return colors[Math.abs(hash) % colors.length];
-};
-
-export default function TaskModal({ visible, mode, task, onClose, onSave, onDelete, teamMode, teamMembers, onAssign, onUnassign }: TaskModalProps) {
+export default function TaskModal({
+  visible,
+  mode,
+  task,
+  onClose,
+  onSave,
+  onDelete,
+  teamMode = false,
+}: TaskModalProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [status, setStatus] = useState<Status>("Pending");
-  const [errors, setErrors] = useState<{ title?: string }>({});
+  const [errors, setErrors] = useState<{ title?: string; due?: string }>({});
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
 
+  // Reset form when modal opens
   useEffect(() => {
     if (visible) {
       if (mode === "edit" && task) {
@@ -44,120 +47,409 @@ export default function TaskModal({ visible, mode, task, onClose, onSave, onDele
         setDueDate(task.due || "");
         setStatus(task.status);
       } else {
-        setTitle(""); setDescription(""); setDueDate(""); setStatus("Pending");
+        // Reset for create mode
+        setTitle("");
+        setDescription("");
+        setDueDate("");
+        setStatus("Pending");
       }
       setErrors({});
     }
   }, [visible, mode, task]);
 
+  const validateForm = () => {
+    const newErrors: typeof errors = {};
+    
+    if (!title.trim()) {
+      newErrors.title = "Title is required";
+    }
+    
+    if (dueDate && !isValidDate(dueDate)) {
+      newErrors.due = "Please enter a valid date (YYYY-MM-DD)";
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const isValidDate = (dateString: string) => {
+    if (!dateString) return true; // Empty is valid (optional)
+    const regex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!regex.test(dateString)) return false;
+    const date = new Date(dateString);
+    return date instanceof Date && !isNaN(date.getTime());
+  };
+
   const handleSave = () => {
-    if (!title.trim()) { setErrors({ title: "Required" }); return; }
-    onSave({
+    if (!validateForm()) return;
+
+    const data = {
       title: title.trim(),
       description: description.trim() || null,
       due: dueDate.trim() || null,
-      status: mode === "edit" ? status : undefined
-    });
-    onClose();
+      status: mode === "edit" ? status : undefined,
+      // TODO: Add assignees when implementing team features
+      // assignees: selectedAssignees,
+    };
+
+    onSave(data);
+    handleClose();
   };
 
-  const handleDelete = () => setShowDeleteConfirm(true);
-  const confirmDelete = () => { if (task) { onDelete?.(task.id); setShowDeleteConfirm(false); onClose(); } };
-
-  const currentAssigneeIds = (task?.assignees || []).map(a => Number(a.id));
-
-  const toggleAssignee = (userID: number) => {
+  const handleDelete = () => {
     if (!task) return;
-    if (currentAssigneeIds.includes(userID)) {
-      onUnassign?.(task.id, userID);
-    } else {
-      onAssign?.(task.id, userID);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = () => {
+    if (task) {
+      onDelete?.(task.id);
+      setShowDeleteConfirm(false);
+      handleClose();
     }
   };
 
-  const formatDate = (d: string) => d ? new Date(d + "T00:00:00").toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : "";
+  const handleClose = () => {
+    setTitle("");
+    setDescription("");
+    setDueDate("");
+    setStatus("Pending");
+    setErrors({});
+    onClose();
+  };
+
+  const formatDisplayDate = (dateString: string) => {
+    if (!dateString) return "";
+    const date = new Date(dateString + "T00:00:00");
+    const options: Intl.DateTimeFormatOptions = { 
+      weekday: 'short', 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    };
+    return date.toLocaleDateString('en-US', options);
+  };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", alignItems: "center", padding: 20 }}>
-        <View style={{ backgroundColor: Colors.surface, borderRadius: 16, width: "100%", maxWidth: 500, maxHeight: "90%" }}>
-          <View style={{ padding: 20, borderBottomWidth: 1, borderColor: Colors.border }}>
-            <Text style={{ fontSize: 20, fontWeight: "700", color: Colors.primary }}>{mode === "create" ? "Create Task" : "Edit Task"}</Text>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={handleClose}
+    >
+      <View style={{
+        flex: 1,
+        backgroundColor: "rgba(0, 0, 0, 0.5)",
+        justifyContent: "center",
+        alignItems: "center",
+        padding: 20,
+      }}>
+        <View style={{
+          backgroundColor: Colors.surface,
+          borderRadius: 16,
+          width: "100%",
+          maxWidth: 500,
+          maxHeight: "90%",
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.15,
+          shadowRadius: 12,
+          elevation: 8,
+        }}>
+          {/* Header */}
+          <View style={{
+            padding: 20,
+            borderBottomWidth: 1,
+            borderBottomColor: Colors.border,
+          }}>
+            <Text style={{
+              fontSize: 22,
+              fontWeight: "700",
+              color: Colors.primary,
+            }}>
+              {mode === "create" ? "Create New Task" : "Edit Task"}
+            </Text>
           </View>
 
-          <ScrollView style={{ padding: 20 }}>
-            {/* Title */}
-            <Text style={{ fontWeight: "600", marginBottom: 6 }}>Title</Text>
-            <TextInput value={title} onChangeText={setTitle} placeholder="Task title" style={{ borderWidth: 1, borderColor: errors.title ? "#ef4444" : Colors.border, borderRadius: 8, padding: 10, marginBottom: 16 }} />
+          {/* Form Content */}
+          <ScrollView style={{ padding: 20 }} showsVerticalScrollIndicator={false}>
+            {/* Title Input */}
+            <View style={{ marginBottom: 20 }}>
+              <Text style={{
+                fontSize: 14,
+                fontWeight: "600",
+                color: Colors.text,
+                marginBottom: 8,
+              }}>
+                Title <Text style={{ color: "#ef4444" }}>*</Text>
+              </Text>
+              <TextInput
+                value={title}
+                onChangeText={setTitle}
+                placeholder="Enter task title"
+                placeholderTextColor={Colors.secondary}
+                style={{
+                  borderWidth: 1,
+                  borderColor: errors.title ? "#ef4444" : Colors.border,
+                  borderRadius: 10,
+                  padding: 12,
+                  fontSize: 15,
+                  backgroundColor: "#FAFAFA",
+                  color: Colors.text,
+                }}
+              />
+              {errors.title && (
+                <Text style={{ color: "#ef4444", fontSize: 12, marginTop: 4 }}>
+                  {errors.title}
+                </Text>
+              )}
+            </View>
 
-            {/* Description */}
-            <Text style={{ fontWeight: "600", marginBottom: 6 }}>Description</Text>
-            <TextInput value={description} onChangeText={setDescription} placeholder="Description" multiline style={{ borderWidth: 1, borderColor: Colors.border, borderRadius: 8, padding: 10, minHeight: 60, marginBottom: 16 }} />
+            {/* Description Input */}
+            <View style={{ marginBottom: 20 }}>
+              <Text style={{
+                fontSize: 14,
+                fontWeight: "600",
+                color: Colors.text,
+                marginBottom: 8,
+              }}>
+                Description
+              </Text>
+              <TextInput
+                value={description}
+                onChangeText={setDescription}
+                placeholder="Add task details (optional)"
+                placeholderTextColor={Colors.secondary}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+                style={{
+                  borderWidth: 1,
+                  borderColor: Colors.border,
+                  borderRadius: 10,
+                  padding: 12,
+                  fontSize: 15,
+                  minHeight: 100,
+                  backgroundColor: "#FAFAFA",
+                  color: Colors.text,
+                }}
+              />
+            </View>
 
-            {/* Due Date */}
-            <Text style={{ fontWeight: "600", marginBottom: 6 }}>Due Date</Text>
-            <Pressable onPress={() => setShowDatePicker(true)} style={{ borderWidth: 1, borderColor: Colors.border, borderRadius: 8, padding: 10, marginBottom: 16, flexDirection: "row", justifyContent: "space-between" }}>
-              <Text style={{ color: dueDate ? Colors.text : Colors.secondary }}>{dueDate ? formatDate(dueDate) : "Select date"}</Text>
-              <Text>📅</Text>
-            </Pressable>
+            {/* Due Date Input */}
+            <View style={{ marginBottom: 20 }}>
+              <Text style={{
+                fontSize: 14,
+                fontWeight: "600",
+                color: Colors.text,
+                marginBottom: 8,
+              }}>
+                Due Date
+              </Text>
+              <Pressable
+                onPress={() => setShowDatePicker(true)}
+                style={{
+                  borderWidth: 1,
+                  borderColor: errors.due ? "#ef4444" : Colors.border,
+                  borderRadius: 10,
+                  padding: 12,
+                  backgroundColor: "#FAFAFA",
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <Text style={{
+                  fontSize: 15,
+                  color: dueDate ? Colors.text : Colors.secondary,
+                }}>
+                  {dueDate ? formatDisplayDate(dueDate) : "Select a due date"}
+                </Text>
+                <Text style={{ fontSize: 18 }}>📅</Text>
+              </Pressable>
+              {dueDate && (
+                <Pressable
+                  onPress={() => setDueDate("")}
+                  style={{
+                    marginTop: 8,
+                    alignSelf: "flex-start",
+                  }}
+                >
+                  <Text style={{
+                    color: Colors.accent,
+                    fontSize: 13,
+                    textDecorationLine: "underline",
+                  }}>
+                    Clear date
+                  </Text>
+                </Pressable>
+              )}
+              {errors.due && (
+                <Text style={{ color: "#ef4444", fontSize: 12, marginTop: 4 }}>
+                  {errors.due}
+                </Text>
+              )}
+            </View>
 
-            {/* Status (edit only) */}
+            {/* Status Selection (Edit mode only) */}
             {mode === "edit" && (
-              <>
-                <Text style={{ fontWeight: "600", marginBottom: 6 }}>Status</Text>
-                <View style={{ flexDirection: "row", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
-                  {(["Pending", "In Progress", "Completed"] as Status[]).map(s => (
-                    <Pressable key={s} onPress={() => setStatus(s)} style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: s === status ? Colors.primary : Colors.border, backgroundColor: s === status ? Colors.primary + "20" : "white" }}>
-                      <Text style={{ color: s === status ? Colors.primary : Colors.text, fontWeight: s === status ? "600" : "400" }}>{s}</Text>
+              <View style={{ marginBottom: 20 }}>
+                <Text style={{
+                  fontSize: 14,
+                  fontWeight: "600",
+                  color: Colors.text,
+                  marginBottom: 8,
+                }}>
+                  Status
+                </Text>
+                <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
+                  {(["Pending", "In Progress", "Completed"] as Status[]).map((s) => (
+                    <Pressable
+                      key={s}
+                      onPress={() => setStatus(s)}
+                      style={{
+                        paddingHorizontal: 16,
+                        paddingVertical: 8,
+                        borderRadius: 20,
+                        borderWidth: 2,
+                        borderColor: s === status ? 
+                          s === "Pending" ? Colors.statusPending :
+                          s === "In Progress" ? Colors.statusInProgress :
+                          Colors.statusCompleted : Colors.border,
+                        backgroundColor: s === status ?
+                          s === "Pending" ? `${Colors.statusPending}20` :
+                          s === "In Progress" ? `${Colors.statusInProgress}20` :
+                          `${Colors.statusCompleted}20` : "transparent",
+                      }}
+                    >
+                      <Text style={{
+                        color: s === status ?
+                          s === "Pending" ? Colors.statusPending :
+                          s === "In Progress" ? Colors.statusInProgress :
+                          Colors.statusCompleted : Colors.text,
+                        fontWeight: s === status ? "700" : "500",
+                      }}>
+                        {s}
+                      </Text>
                     </Pressable>
                   ))}
                 </View>
-              </>
+              </View>
             )}
 
-            {/* Assignees (team mode, edit only) */}
-            {teamMode && mode === "edit" && teamMembers && teamMembers.length > 0 && (
-              <>
-                <Text style={{ fontWeight: "600", marginBottom: 6 }}>Assign To</Text>
-                <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
-                  {teamMembers.map(m => {
-                    const isAssigned = currentAssigneeIds.includes(m.userID);
-                    return (
-                      <Pressable key={m.userID} onPress={() => toggleAssignee(m.userID)} style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 16, borderWidth: 1, borderColor: isAssigned ? Colors.primary : Colors.border, backgroundColor: isAssigned ? Colors.primary + "15" : "white" }}>
-                        <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: stringToColor(m.userName), alignItems: "center", justifyContent: "center" }}>
-                          <Text style={{ color: "white", fontSize: 10, fontWeight: "700" }}>{m.userName.substring(0, 2).toUpperCase()}</Text>
-                        </View>
-                        <Text style={{ color: isAssigned ? Colors.primary : Colors.text }}>{m.userName}</Text>
-                        {isAssigned && <Text style={{ color: Colors.primary }}>✓</Text>}
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              </>
+            {/* TODO: Assignee Selection for Team Mode */}
+            {teamMode && (
+              <View style={{
+                padding: 16,
+                backgroundColor: "#F0F9FF",
+                borderRadius: 10,
+                marginBottom: 20,
+              }}>
+                <Text style={{ color: Colors.secondary, fontSize: 13 }}>
+                  TODO: Add assignee selection based on team roster
+                </Text>
+              </View>
             )}
           </ScrollView>
 
-          {/* Footer */}
-          <View style={{ padding: 16, borderTopWidth: 1, borderColor: Colors.border, flexDirection: "row", justifyContent: mode === "edit" ? "space-between" : "flex-end", gap: 12 }}>
+          {/* Footer Buttons */}
+          <View style={{
+            padding: 20,
+            borderTopWidth: 1,
+            borderTopColor: Colors.border,
+            flexDirection: "row",
+            justifyContent: mode === "edit" ? "space-between" : "flex-end",
+            gap: 12,
+          }}>
+            {/* Delete button (Edit mode only, left side) */}
             {mode === "edit" && onDelete && (
-              <Pressable onPress={handleDelete} style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: "#ef4444" }}>
-                <Text style={{ color: "#ef4444", fontWeight: "600" }}>Delete</Text>
+              <Pressable
+                onPress={handleDelete}
+                style={{
+                  paddingHorizontal: 20,
+                  paddingVertical: 10,
+                  borderRadius: 8,
+                  borderWidth: 1,
+                  borderColor: "#ef4444",
+                  backgroundColor: "white",
+                }}
+              >
+                <Text style={{
+                  color: "#ef4444",
+                  fontWeight: "600",
+                  fontSize: 15,
+                }}>
+                  Delete Task
+                </Text>
               </Pressable>
             )}
-            <View style={{ flexDirection: "row", gap: 12 }}>
-              <Pressable onPress={onClose} style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: Colors.border }}>
-                <Text style={{ color: Colors.text }}>Cancel</Text>
+
+            {/* Right side buttons container */}
+            <View style={{
+              flexDirection: "row",
+              gap: 12,
+              marginLeft: mode === "edit" ? "auto" : 0,
+            }}>
+              <Pressable
+                onPress={handleClose}
+                style={{
+                  paddingHorizontal: 20,
+                  paddingVertical: 10,
+                  borderRadius: 8,
+                  borderWidth: 1,
+                  borderColor: Colors.border,
+                  backgroundColor: "white",
+                }}
+              >
+                <Text style={{
+                  color: Colors.text,
+                  fontWeight: "600",
+                  fontSize: 15,
+                }}>
+                  Cancel
+                </Text>
               </Pressable>
-              <Pressable onPress={handleSave} style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, backgroundColor: Colors.primary }}>
-                <Text style={{ color: "white", fontWeight: "600" }}>{mode === "create" ? "Create" : "Save"}</Text>
+
+              <Pressable
+                onPress={handleSave}
+                style={{
+                  paddingHorizontal: 20,
+                  paddingVertical: 10,
+                  borderRadius: 8,
+                  backgroundColor: Colors.primary,
+                }}
+              >
+                <Text style={{
+                  color: "white",
+                  fontWeight: "600",
+                  fontSize: 15,
+                }}>
+                  {mode === "create" ? "Create Task" : "Save Changes"}
+                </Text>
               </Pressable>
             </View>
           </View>
         </View>
       </View>
 
-      <DeleteConfirmModal visible={showDeleteConfirm} taskTitle={task?.title || ""} onConfirm={confirmDelete} onCancel={() => setShowDeleteConfirm(false)} />
-      <DatePicker visible={showDatePicker} selectedDate={dueDate || null} onSelectDate={(d) => { setDueDate(d || ""); setShowDatePicker(false); }} onClose={() => setShowDatePicker(false)} />
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        visible={showDeleteConfirm}
+        taskTitle={task?.title || ""}
+        onConfirm={confirmDelete}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
+
+      {/* Date Picker Modal */}
+      <DatePicker
+        visible={showDatePicker}
+        selectedDate={dueDate || null}
+        onSelectDate={(date) => {
+          setDueDate(date || "");
+          setShowDatePicker(false);
+        }}
+        onClose={() => setShowDatePicker(false)}
+      />
     </Modal>
   );
 }

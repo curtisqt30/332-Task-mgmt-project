@@ -4,65 +4,152 @@ import { usePathname, useLocalSearchParams, useSegments } from "expo-router";
 import { Colors } from "@/constants/theme";
 import SideNavigation from "./SideNavigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { getTeams, getMemberships, setUser, type Team } from "@/lib/storage";
+import { initialsFromName } from "@/lib/id";
 
-const API = process.env.EXPO_PUBLIC_API_BASE ?? "http://localhost:8000";
 const DRAWER_W = 280;
 
-type DrawerContextType = { toggleDrawer: (open?: boolean) => void; isOpen: boolean; refreshTeams: () => Promise<void> };
+type DrawerContextType = {
+  toggleDrawer: (open?: boolean) => void;
+  isOpen: boolean;
+  refreshTeams: () => Promise<void>;
+};
+
 const DrawerContext = createContext<DrawerContextType | undefined>(undefined);
+
 export function useDrawer() {
-  const ctx = useContext(DrawerContext);
-  if (!ctx) throw new Error("useDrawer must be used within AppLayout");
-  return ctx;
+  const context = useContext(DrawerContext);
+  if (!context) {
+    throw new Error("useDrawer must be used within AppLayout");
+  }
+  return context;
 }
 
-export default function AppLayout({ children }: { children: ReactNode }) {
+type AppLayoutProps = {
+  children: ReactNode;
+};
+
+export default function AppLayout({ children }: AppLayoutProps) {
   const { user } = useAuth();
   const pathname = usePathname();
   const segments = useSegments();
   const params = useLocalSearchParams();
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [teams, setTeams] = useState<Array<{ id: string; name: string; code: string }>>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
   const drawerX = useRef(new Animated.Value(-DRAWER_W)).current;
 
-  const loadTeams = useCallback(async () => {
-    if (!user) { setTeams([]); return; }
+  const syncUserAndLoadTeams = useCallback(async () => {
     try {
-      const res = await fetch(`${API}/api/teams`, { credentials: "include" });
-      if (res.ok) {
-        const data = await res.json();
-        setTeams(data.map((t: any) => ({ id: String(t.teamID), name: t.teamName, code: t.joinCode })));
+      if (user) {
+        const userId = String(user.userId);
+        const initials = initialsFromName(user.userName);
+        
+        await setUser({
+          id: userId,
+          name: user.userName,
+          initials: initials,
+        });
+        
+        const allTeams = await getTeams();
+        const memberships = await getMemberships();
+        
+        const userTeamIds = memberships
+          .filter(m => m.userId === userId)
+          .map(m => m.teamId);
+        const userTeams = allTeams.filter(t => userTeamIds.includes(t.id));
+        setTeams(userTeams);
+      } else {
+        setTeams([]);
       }
-    } catch (e) { console.error(e); }
+    } catch (error) {
+      console.error("Error loading teams:", error);
+    }
   }, [user]);
 
-  useEffect(() => { loadTeams(); }, [user, loadTeams]);
-  useEffect(() => { if (drawerOpen && user) loadTeams(); }, [drawerOpen, user]);
+  useEffect(() => {
+    syncUserAndLoadTeams();
+  }, [user]);
+
+  // Refresh teams when drawer opens
+  useEffect(() => {
+    if (drawerOpen && user) {
+      syncUserAndLoadTeams();
+    }
+  }, [drawerOpen, user]);
 
   const toggleDrawer = (open?: boolean) => {
     const next = typeof open === "boolean" ? open : !drawerOpen;
     setDrawerOpen(next);
-    Animated.timing(drawerX, { toValue: next ? 0 : -DRAWER_W, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+    Animated.timing(drawerX, {
+      toValue: next ? 0 : -DRAWER_W,
+      duration: 200,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
   };
 
   const getCurrentView = (): string => {
     if (!pathname) return "my-tasks";
+    
     if (pathname === "/dashboard" || pathname === "/") return "my-tasks";
     if (pathname === "/teams") return "teams-hub";
     if (pathname === "/teams-create") return "create-team";
     if (pathname === "/teams-join") return "join-team";
     if (pathname === "/login") return "sign-out";
-    if (pathname.startsWith("/team-dashboard/")) return `team-${segments[segments.length - 1]}`;
+    
+    if (pathname.startsWith("/team-dashboard/")) {
+      const teamId = segments[segments.length - 1];
+      return `team-${teamId}`;
+    }
+    
+    if (pathname === "/team-dashboard" && params.teamId) {
+      return `team-${params.teamId}`;
+    }
+    
     return "my-tasks";
   };
 
+  const currentView = getCurrentView();
+  const userInitials = user?.userName.substring(0, 2).toUpperCase() || "U";
+  const userName = user?.userName || "User";
+
   return (
-    <DrawerContext.Provider value={{ toggleDrawer, isOpen: drawerOpen, refreshTeams: loadTeams }}>
+    <DrawerContext.Provider value={{ toggleDrawer, isOpen: drawerOpen, refreshTeams: syncUserAndLoadTeams }}>
       <View style={{ flex: 1, backgroundColor: Colors.background }}>
         {children}
-        {drawerOpen && <Pressable onPress={() => toggleDrawer(false)} style={{ position: "absolute", inset: 0, backgroundColor: "rgba(0,0,0,0.2)", zIndex: 999 }} />}
-        <Animated.View style={{ position: "absolute", top: 0, bottom: 0, left: 0, width: DRAWER_W, transform: [{ translateX: drawerX }], zIndex: 1000 }}>
-          <SideNavigation currentView={getCurrentView()} teams={teams} currentUserName={user?.userName || "User"} currentUserInitials={user?.userName.substring(0, 2).toUpperCase() || "U"} onClose={() => toggleDrawer(false)} />
+
+        {/* Drawer overlay */}
+        {drawerOpen && (
+          <Pressable 
+            onPress={() => toggleDrawer(false)} 
+            style={{ position: "absolute", inset: 0, backgroundColor: "rgba(0,0,0,0.2)", zIndex: 999 }} 
+          />
+        )}
+
+        {/* Drawer panel */}
+        <Animated.View
+          style={{
+            position: "absolute",
+            top: 0,
+            bottom: 0,
+            left: 0,
+            width: DRAWER_W,
+            transform: [{ translateX: drawerX }],
+            shadowColor: "#000",
+            shadowOpacity: 0.08,
+            shadowOffset: { width: 2, height: 0 },
+            shadowRadius: 6,
+            elevation: 5,
+            zIndex: 1000,
+          }}
+        >
+          <SideNavigation
+            currentView={currentView}
+            teams={teams}
+            currentUserName={userName}
+            currentUserInitials={userInitials}
+            onClose={() => toggleDrawer(false)}
+          />
         </Animated.View>
       </View>
     </DrawerContext.Provider>
@@ -71,8 +158,21 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
 export function HamburgerButton() {
   const { toggleDrawer } = useDrawer();
+  
   return (
-    <Pressable onPress={() => toggleDrawer()} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center", borderRadius: 8, borderWidth: 1, borderColor: Colors.border, backgroundColor: "#fff" }}>
+    <Pressable 
+      onPress={() => toggleDrawer()} 
+      style={{ 
+        width: 40, 
+        height: 40, 
+        alignItems: "center", 
+        justifyContent: "center", 
+        borderRadius: 8, 
+        borderWidth: 1, 
+        borderColor: Colors.border, 
+        backgroundColor: "#fff" 
+      }}
+    >
       <View style={{ width: 18, height: 2, backgroundColor: Colors.text, marginBottom: 3 }} />
       <View style={{ width: 18, height: 2, backgroundColor: Colors.text, marginBottom: 3 }} />
       <View style={{ width: 18, height: 2, backgroundColor: Colors.text }} />

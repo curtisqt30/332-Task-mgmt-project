@@ -212,9 +212,9 @@ export default function DashboardScreen({
         <View style={{ flex: 1, backgroundColor: Colors.surface, borderRadius: 12, borderWidth: 1, borderColor: Colors.border }}>
           <ScrollView contentContainerStyle={{ padding: 12 }}>
             {loading ? (
-              <Text style={{ color: Colors.secondary, textAlign: "center", padding: 24 }}></Text>
+              <Text style={{ color: Colors.secondary, textAlign: "center", padding: 24 }}>Loading…</Text>
             ) : filtered.length === 0 ? (
-              <Text style={{ color: Colors.secondary, textAlign: "center", padding: 24 }}></Text>
+              <Text style={{ color: Colors.secondary, textAlign: "center", padding: 24 }}>No tasks match your filters.</Text>
             ) : (
               filtered.map((t) => (
                 <Pressable

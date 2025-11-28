@@ -2,61 +2,250 @@ import { useRouter } from "expo-router";
 import { useState, useEffect } from "react";
 import { View, Text, TextInput, Pressable, Alert, ActivityIndicator } from "react-native";
 import { Colors } from "../constants/theme";
+import { getTeams, getMemberships, saveMemberships, setCurrentTeamId } from "../lib/storage";
 import { HamburgerButton } from "@/components/AppLayout";
 import { useAuth } from "@/contexts/AuthContext";
 
-const API = process.env.EXPO_PUBLIC_API_BASE ?? "http://localhost:8000";
-
 export default function JoinTeam() {
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user: authUser, loading: authLoading } = useAuth();
   const [code, setCode] = useState("");
-  const [joining, setJoining] = useState(false);
 
+  // Redirect if not logged in after auth loads
   useEffect(() => {
-    if (!authLoading && !user) router.replace("/login");
-  }, [authLoading, user]);
+    if (!authLoading && !authUser) {
+      console.log("No auth user, redirecting to login");
+      router.replace("/login");
+    }
+  }, [authLoading, authUser]);
 
   const join = async () => {
-    const c = code.trim().toUpperCase();
-    if (c.length !== 6) { Alert.alert("Invalid", "Enter a 6-character code"); return; }
-    setJoining(true);
-    try {
-      const res = await fetch(`${API}/api/teams/join`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ joinCode: c }),
-        credentials: "include"
-      });
-      if (res.status === 401) { router.replace("/login"); return; }
-      if (res.status === 404) { Alert.alert("Not Found", "No team with this code"); setJoining(false); return; }
-      if (res.status === 400) { Alert.alert("Already Member", "You're already in this team"); router.replace("/teams"); return; }
-      if (!res.ok) throw new Error("Failed");
-      const data = await res.json();
-      Alert.alert("Joined!", `Welcome to ${data.teamName}`, [{ text: "OK", onPress: () => router.replace("/teams") }]);
-    } catch (e) { Alert.alert("Error", "Failed to join"); }
-    finally { setJoining(false); }
+    const trimmedCode = code.trim().toUpperCase();
+    
+    if (!trimmedCode) {
+      Alert.alert("Code required", "Please enter a team join code.");
+      return;
+    }
+
+    if (trimmedCode.length !== 6) {
+      Alert.alert("Invalid code", "Team codes are exactly 6 characters.");
+      return;
+    }
+
+    // Double-check authentication
+    if (!authUser) {
+      Alert.alert("Not logged in", "Please log in to join a team.");
+      router.replace("/login");
+      return;
+    }
+
+    console.log("Auth user:", authUser);
+    
+    const userId = String(authUser.userId);
+    
+    console.log("Joining team as user ID:", userId, "Type:", typeof userId);
+    
+    const teams = await getTeams();
+    const team = teams.find(t => t.code.toUpperCase() === trimmedCode);
+    
+    if (!team) {
+      Alert.alert("Team not found", "No team exists with this code. Please check and try again.");
+      return;
+    }
+
+    const memberships = await getMemberships();
+    const already = memberships.some(m => m.userId === userId && m.teamId === team.id);
+    
+    if (already) {
+      Alert.alert(
+        "Already a member",
+        `You're already part of "${team.name}".`,
+        [{ text: "OK", onPress: () => router.replace("/teams") }]
+      );
+      return;
+    }
+
+    console.log("Adding membership:", { userId, teamId: team.id });
+    
+    memberships.unshift({ userId: userId, teamId: team.id });
+    await saveMemberships(memberships);
+    await setCurrentTeamId(team.id);
+    
+    Alert.alert(
+      "Joined Team!",
+      `You've successfully joined "${team.name}".`,
+      [{ text: "OK", onPress: () => router.replace("/teams") }]
+    );
   };
 
-  if (authLoading || !user) return null;
+  const handleCancel = () => {
+    router.back();
+  };
+
+  // Show loading while auth is loading
+  if (authLoading) {
+    return (
+      <View style={{ 
+        flex: 1, 
+        backgroundColor: Colors.background,
+        alignItems: "center",
+        justifyContent: "center",
+      }}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+        <Text style={{ marginTop: 12, color: Colors.secondary }}>Loading...</Text>
+      </View>
+    );
+  }
+
+  // Don't render if no user (redirect will happen)
+  if (!authUser) {
+    return null;
+  }
 
   return (
-    <View style={{ flex: 1, backgroundColor: Colors.background }}>
-      <View style={{ paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderColor: Colors.border, backgroundColor: Colors.surface, flexDirection: "row", alignItems: "center", gap: 12 }}>
+    <View style={{ 
+      flex: 1, 
+      backgroundColor: Colors.background,
+    }}>
+      {/* Header */}
+      <View style={{
+        paddingHorizontal: 20,
+        paddingVertical: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: Colors.border,
+        backgroundColor: Colors.surface,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 12,
+      }}>
         <HamburgerButton />
-        <Text style={{ color: Colors.primary, fontSize: 20, fontWeight: "700" }}>Join Team</Text>
+        <Text style={{ 
+          color: Colors.primary, 
+          fontSize: 20, 
+          fontWeight: "700" 
+        }}>
+          Join Team
+        </Text>
       </View>
 
-      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 16 }}>
-        <View style={{ width: "100%", maxWidth: 400, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: 12, padding: 24 }}>
-          <Text style={{ fontWeight: "600", marginBottom: 8 }}>Join Code</Text>
-          <TextInput value={code} onChangeText={setCode} placeholder="XXXXXX" autoCapitalize="characters" maxLength={6} style={{ borderWidth: 1, borderColor: Colors.border, borderRadius: 8, padding: 12, marginBottom: 20, textAlign: "center", fontSize: 18, letterSpacing: 4 }} />
-          <View style={{ flexDirection: "row", gap: 12 }}>
-            <Pressable onPress={() => router.back()} style={{ flex: 1, padding: 12, borderRadius: 8, borderWidth: 1, borderColor: Colors.border }}>
-              <Text style={{ textAlign: "center" }}>Cancel</Text>
+      {/* Content */}
+      <View style={{ 
+        flex: 1,
+        alignItems: "center", 
+        justifyContent: "center", 
+        padding: 16 
+      }}>
+        <View style={{ 
+          width: "100%", 
+          maxWidth: 500, 
+          backgroundColor: Colors.surface, 
+          borderWidth: 1, 
+          borderColor: Colors.border, 
+          borderRadius: 16, 
+          padding: 24,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.05,
+          shadowRadius: 8,
+        }}>
+
+          {/* Title */}
+          <Text style={{ 
+            color: Colors.text, 
+            fontWeight: "700", 
+            fontSize: 22, 
+            marginBottom: 8,
+            textAlign: "center",
+          }}>
+            Join a Team
+          </Text>
+          
+          <Text style={{
+            color: Colors.secondary,
+            fontSize: 14,
+            marginBottom: 24,
+            textAlign: "center",
+            lineHeight: 20,
+          }}>
+            Enter the 6-character code
+          </Text>
+
+          {/* Input */}
+          <View style={{ marginBottom: 24 }}>
+            <Text style={{
+              fontSize: 14,
+              fontWeight: "600",
+              color: Colors.text,
+              marginBottom: 8,
+            }}>
+              Team Code <Text style={{ color: "#ef4444" }}>*</Text>
+            </Text>
+            <TextInput
+              placeholder="Enter 6-character code"
+              value={code}
+              onChangeText={setCode}
+              autoCapitalize="characters"
+              maxLength={6}
+              autoFocus
+              style={{ 
+                borderWidth: 1, 
+                borderColor: Colors.border, 
+                borderRadius: 10, 
+                backgroundColor: "#FAFAFA", 
+                paddingHorizontal: 14, 
+                paddingVertical: 12, 
+                letterSpacing: 3,
+                fontSize: 18,
+                fontWeight: "600",
+                textAlign: "center",
+                color: Colors.text,
+              }}
+            />
+          </View>
+
+          {/* Buttons */}
+          <View style={{
+            flexDirection: "row",
+            gap: 12,
+          }}>
+            <Pressable 
+              onPress={handleCancel} 
+              style={{ 
+                flex: 1,
+                paddingVertical: 12, 
+                borderRadius: 8,
+                borderWidth: 1,
+                borderColor: Colors.border,
+                backgroundColor: "white",
+              }}
+            >
+              <Text style={{ 
+                color: Colors.text, 
+                textAlign: "center", 
+                fontWeight: "600",
+                fontSize: 15,
+              }}>
+                Cancel
+              </Text>
             </Pressable>
-            <Pressable onPress={join} disabled={joining} style={{ flex: 1, padding: 12, borderRadius: 8, backgroundColor: Colors.primary }}>
-              {joining ? <ActivityIndicator color="white" /> : <Text style={{ color: "white", textAlign: "center", fontWeight: "600" }}>Join</Text>}
+
+            <Pressable 
+              onPress={join} 
+              style={{ 
+                flex: 1,
+                backgroundColor: Colors.primary, 
+                paddingVertical: 12, 
+                borderRadius: 8,
+              }}
+            >
+              <Text style={{ 
+                color: "white", 
+                textAlign: "center", 
+                fontWeight: "700",
+                fontSize: 15,
+              }}>
+                Join Team
+              </Text>
             </Pressable>
           </View>
         </View>
