@@ -16,6 +16,7 @@ type TaskModalProps = {
   onDelete?: (taskId: Task["id"]) => void;
   teamMode?: boolean;
   teamMembers?: TeamMember[];
+  currentUserId?: number;
   onAssign?: (taskId: Task["id"], userID: number) => void;
   onUnassign?: (taskId: Task["id"], userID: number) => void;
 };
@@ -27,7 +28,19 @@ const stringToColor = (str: string): string => {
   return colors[Math.abs(hash) % colors.length];
 };
 
-export default function TaskModal({ visible, mode, task, onClose, onSave, onDelete, teamMode, teamMembers, onAssign, onUnassign }: TaskModalProps) {
+export default function TaskModal({ 
+  visible, 
+  mode, 
+  task, 
+  onClose, 
+  onSave, 
+  onDelete, 
+  teamMode, 
+  teamMembers = [], 
+  currentUserId,
+  onAssign, 
+  onUnassign 
+}: TaskModalProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [dueDate, setDueDate] = useState("");
@@ -35,6 +48,7 @@ export default function TaskModal({ visible, mode, task, onClose, onSave, onDele
   const [errors, setErrors] = useState<{ title?: string }>({});
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showAssignDropdown, setShowAssignDropdown] = useState(false);
 
   useEffect(() => {
     if (visible) {
@@ -47,6 +61,7 @@ export default function TaskModal({ visible, mode, task, onClose, onSave, onDele
         setTitle(""); setDescription(""); setDueDate(""); setStatus("Pending");
       }
       setErrors({});
+      setShowAssignDropdown(false);
     }
   }, [visible, mode, task]);
 
@@ -76,6 +91,9 @@ export default function TaskModal({ visible, mode, task, onClose, onSave, onDele
   };
 
   const formatDate = (d: string) => d ? new Date(d + "T00:00:00").toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : "";
+
+  // Check if current user is assigned
+  const isSelfAssigned = currentUserId ? currentAssigneeIds.includes(currentUserId) : false;
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -115,24 +133,141 @@ export default function TaskModal({ visible, mode, task, onClose, onSave, onDele
               </>
             )}
 
-            {/* Assignees (team mode, edit only) */}
-            {teamMode && mode === "edit" && teamMembers && teamMembers.length > 0 && (
+            {/* Assignment Section (team mode, edit only) */}
+            {teamMode && mode === "edit" && task && teamMembers.length > 0 && (
               <>
-                <Text style={{ fontWeight: "600", marginBottom: 6 }}>Assign To</Text>
-                <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
-                  {teamMembers.map(m => {
-                    const isAssigned = currentAssigneeIds.includes(m.userID);
-                    return (
-                      <Pressable key={m.userID} onPress={() => toggleAssignee(m.userID)} style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 16, borderWidth: 1, borderColor: isAssigned ? Colors.primary : Colors.border, backgroundColor: isAssigned ? Colors.primary + "15" : "white" }}>
-                        <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: stringToColor(m.userName), alignItems: "center", justifyContent: "center" }}>
-                          <Text style={{ color: "white", fontSize: 10, fontWeight: "700" }}>{m.userName.substring(0, 2).toUpperCase()}</Text>
+                <Text style={{ fontWeight: "600", marginBottom: 6 }}>Assigned</Text>
+                
+                {/* Quick self-assign button */}
+                {currentUserId && (
+                  <Pressable 
+                    onPress={() => toggleAssignee(currentUserId)}
+                    style={{ 
+                      flexDirection: "row", 
+                      alignItems: "center", 
+                      gap: 8, 
+                      padding: 10, 
+                      borderWidth: 1, 
+                      borderColor: isSelfAssigned ? Colors.primary : Colors.border, 
+                      borderRadius: 8, 
+                      marginBottom: 8,
+                      backgroundColor: isSelfAssigned ? Colors.primary + "10" : "white"
+                    }}
+                  >
+                    <Text style={{ flex: 1, color: Colors.text }}>
+                      {isSelfAssigned ? "✓ Assigned to me" : "Assign to myself"}
+                    </Text>
+                    <Text style={{ color: isSelfAssigned ? Colors.primary : Colors.secondary }}>
+                      {isSelfAssigned ? "Remove" : "Add"}
+                    </Text>
+                  </Pressable>
+                )}
+
+                {/* Dropdown toggle */}
+                <Pressable 
+                  onPress={() => setShowAssignDropdown(!showAssignDropdown)}
+                  style={{ 
+                    flexDirection: "row", 
+                    alignItems: "center", 
+                    justifyContent: "space-between",
+                    padding: 10, 
+                    borderWidth: 1, 
+                    borderColor: Colors.border, 
+                    borderRadius: 8,
+                    marginBottom: showAssignDropdown ? 0 : 16,
+                    borderBottomLeftRadius: showAssignDropdown ? 0 : 8,
+                    borderBottomRightRadius: showAssignDropdown ? 0 : 8,
+                  }}
+                >
+                  <Text style={{ color: Colors.text }}>
+                    {currentAssigneeIds.length === 0 
+                      ? "No one assigned" 
+                      : `${currentAssigneeIds.length} assigned`}
+                  </Text>
+                  <Text style={{ color: Colors.secondary }}>{showAssignDropdown ? "▲" : "▼"}</Text>
+                </Pressable>
+
+                {/* Dropdown list */}
+                {showAssignDropdown && (
+                  <View style={{ 
+                    borderWidth: 1, 
+                    borderTopWidth: 0,
+                    borderColor: Colors.border, 
+                    borderBottomLeftRadius: 8,
+                    borderBottomRightRadius: 8,
+                    marginBottom: 16,
+                    maxHeight: 200,
+                  }}>
+                    <ScrollView nestedScrollEnabled>
+                      {teamMembers.map(m => {
+                        const isAssigned = currentAssigneeIds.includes(m.userID);
+                        const isMe = m.userID === currentUserId;
+                        return (
+                          <Pressable 
+                            key={m.userID} 
+                            onPress={() => toggleAssignee(m.userID)}
+                            style={{ 
+                              flexDirection: "row", 
+                              alignItems: "center", 
+                              gap: 10, 
+                              padding: 10,
+                              borderBottomWidth: 1,
+                              borderBottomColor: Colors.border,
+                              backgroundColor: isAssigned ? Colors.primary + "08" : "white"
+                            }}
+                          >
+                            <View style={{ 
+                              width: 28, 
+                              height: 28, 
+                              borderRadius: 14, 
+                              backgroundColor: stringToColor(m.userName), 
+                              alignItems: "center", 
+                              justifyContent: "center" 
+                            }}>
+                              <Text style={{ color: "white", fontSize: 11, fontWeight: "700" }}>
+                                {m.userName.substring(0, 2).toUpperCase()}
+                              </Text>
+                            </View>
+                            <Text style={{ flex: 1, color: Colors.text }}>
+                              {m.userName}{isMe ? " (me)" : ""}
+                            </Text>
+                            {m.role === "owner" && (
+                              <Text style={{ fontSize: 10, color: Colors.secondary, backgroundColor: "#F1F5F9", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                                Owner
+                              </Text>
+                            )}
+                            <View style={{ 
+                              width: 20, 
+                              height: 20, 
+                              borderRadius: 4, 
+                              borderWidth: 1, 
+                              borderColor: isAssigned ? Colors.primary : Colors.border,
+                              backgroundColor: isAssigned ? Colors.primary : "white",
+                              alignItems: "center",
+                              justifyContent: "center"
+                            }}>
+                              {isAssigned && <Text style={{ color: "white", fontSize: 12 }}>✓</Text>}
+                            </View>
+                          </Pressable>
+                        );
+                      })}
+                    </ScrollView>
+                  </View>
+                )}
+
+                {/* Show current assignees */}
+                {!showAssignDropdown && currentAssigneeIds.length > 0 && (
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 16, marginTop: -8 }}>
+                    {task.assignees?.map(a => (
+                      <View key={a.id} style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#F1F5F9", paddingVertical: 4, paddingHorizontal: 8, borderRadius: 12 }}>
+                        <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: a.color, alignItems: "center", justifyContent: "center" }}>
+                          <Text style={{ color: "white", fontSize: 8, fontWeight: "700" }}>{a.initials}</Text>
                         </View>
-                        <Text style={{ color: isAssigned ? Colors.primary : Colors.text }}>{m.userName}</Text>
-                        {isAssigned && <Text style={{ color: Colors.primary }}>✓</Text>}
-                      </Pressable>
-                    );
-                  })}
-                </View>
+                        <Text style={{ fontSize: 12, color: Colors.text }}>{a.name}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
               </>
             )}
           </ScrollView>

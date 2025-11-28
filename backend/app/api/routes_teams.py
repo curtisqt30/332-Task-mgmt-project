@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import List
+from datetime import date, datetime
 import random
 
 from app.core.db import SessionLocal
@@ -25,6 +26,16 @@ def get_db():
 def generate_join_code() -> str:
     chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
     return "".join(random.choice(chars) for _ in range(6))
+
+
+def parse_date(date_str: str | None) -> date | None:
+    """Parse date string to date object."""
+    if not date_str:
+        return None
+    try:
+        return datetime.strptime(date_str, "%Y-%m-%d").date()
+    except (ValueError, TypeError):
+        return None
 
 
 # ============ TEAMS ============
@@ -136,7 +147,7 @@ def create_team_task(team_id: int, data: dict, request: Request, db: Session = D
     task = Task(
         title=data["title"],
         description=data.get("description"),
-        due=data.get("due"),
+        due=parse_date(data.get("due")),
         ownerTeamID=team_id,
         ownerUserID=None
     )
@@ -154,7 +165,10 @@ def update_team_task(team_id: int, task_id: int, data: dict, request: Request, d
     task = db.get(Task, task_id)
     if not task or task.ownerTeamID != team_id:
         raise HTTPException(404, "Task not found")
+    
     for k, v in data.items():
+        if k == "due":
+            v = parse_date(v)
         if hasattr(task, k):
             setattr(task, k, v)
     db.commit()

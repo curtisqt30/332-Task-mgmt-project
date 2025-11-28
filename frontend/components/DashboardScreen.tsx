@@ -5,6 +5,8 @@ import TaskModal from "./TaskModal";
 import { HamburgerButton } from "./AppLayout";
 import type { Task, Status } from "./types";
 
+type TeamMember = { userID: number; userName: string; role: string };
+
 type Props = {
   mode: "personal" | "team";
   teamId?: string;
@@ -14,16 +16,19 @@ type Props = {
   onSelectTask?: (taskId: Task["id"]) => void;
   onEditTask?: (taskId: Task["id"], patch: Partial<Task>) => void;
   onDeleteTask?: (taskId: Task["id"]) => void;
+  onAssign?: (taskId: Task["id"], userID: number) => void;
+  onUnassign?: (taskId: Task["id"], userID: number) => void;
   currentUserInitials?: string;
   currentUserName?: string;
+  currentUserId?: number;
   titleOverride?: string;
   teams?: Array<{ id: string; name: string; code: string }>;
+  teamMembers?: TeamMember[];
 };
 
 const statusColor = (s: Status) =>
   ({ Pending: Colors.statusPending, "In Progress": Colors.statusInProgress, Completed: Colors.statusCompleted, Overdue: Colors.statusOverdue }[s]);
 
-// Helper function to check if a date string is today
 const isToday = (dateString: string | null | undefined): boolean => {
   if (!dateString) return false;
   const today = new Date();
@@ -35,7 +40,6 @@ const isToday = (dateString: string | null | undefined): boolean => {
   );
 };
 
-// Helper function to check if a date is overdue
 const isOverdue = (dateString: string | null | undefined, status: Status): boolean => {
   if (!dateString || status === "Completed") return false;
   const today = new Date();
@@ -44,22 +48,16 @@ const isOverdue = (dateString: string | null | undefined, status: Status): boole
   return taskDate < today;
 };
 
-// Helper function to check if a date is within this week
 const isThisWeek = (dateString: string | null | undefined): boolean => {
   if (!dateString) return false;
   const today = new Date();
   const taskDate = new Date(dateString + "T00:00:00");
-  
-  // Get the start of this week (Sunday)
   const startOfWeek = new Date(today);
   startOfWeek.setDate(today.getDate() - today.getDay());
   startOfWeek.setHours(0, 0, 0, 0);
-  
-  // Get the end of this week (Saturday)
   const endOfWeek = new Date(startOfWeek);
   endOfWeek.setDate(startOfWeek.getDate() + 6);
   endOfWeek.setHours(23, 59, 59, 999);
-  
   return taskDate >= startOfWeek && taskDate <= endOfWeek;
 };
 
@@ -72,15 +70,17 @@ export default function DashboardScreen({
   onSelectTask,
   onEditTask,
   onDeleteTask,
+  onAssign,
+  onUnassign,
   currentUserInitials = "U",
   currentUserName = "User",
+  currentUserId,
   titleOverride,
   teams = [],
+  teamMembers = [],
 }: Props) {
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<"All" | Status>("All");
-  
-  // Modal states
   const [modalVisible, setModalVisible] = useState(false);
   const [modalMode, setModalMode] = useState<"create" | "edit">("create");
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -93,7 +93,6 @@ export default function DashboardScreen({
     });
   }, [tasks, q, status]);
 
-  // Calculate global stats from ALL tasks (not filtered)
   const stats = useMemo(() => ({
     dueToday: tasks.filter((t) => isToday(t.due)).length,
     overdue: tasks.filter((t) => isOverdue(t.due, t.status)).length,
@@ -103,7 +102,6 @@ export default function DashboardScreen({
 
   const headerTitle = titleOverride ?? (mode === "personal" ? "My Tasks" : `Team Tasks · ${teamId ?? ""}`);
 
-  // Modal handlers
   const openCreateModal = () => {
     setModalMode("create");
     setSelectedTask(null);
@@ -130,6 +128,14 @@ export default function DashboardScreen({
     setModalVisible(false);
   };
 
+  const handleAssign = (taskId: Task["id"], userID: number) => {
+    onAssign?.(taskId, userID);
+  };
+
+  const handleUnassign = (taskId: Task["id"], userID: number) => {
+    onUnassign?.(taskId, userID);
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
       {/* Header */}
@@ -144,9 +150,7 @@ export default function DashboardScreen({
         gap: 12 
       }}>
         <HamburgerButton />
-
         <Text style={{ color: Colors.primary, fontSize: 20, fontWeight: "700" }}>{headerTitle}</Text>
-
         <TextInput
           placeholder="Search tasks…"
           value={q}
@@ -162,7 +166,6 @@ export default function DashboardScreen({
             marginLeft: 8 
           }}
         />
-
         <Pressable 
           onPress={openCreateModal} 
           disabled={!onAddTask} 
@@ -280,12 +283,7 @@ export default function DashboardScreen({
 
                   {t.description && (
                     <Text 
-                      style={{ 
-                        color: Colors.secondary, 
-                        marginTop: 6, 
-                        fontSize: 13,
-                        lineHeight: 18,
-                      }} 
+                      style={{ color: Colors.secondary, marginTop: 6, fontSize: 13, lineHeight: 18 }} 
                       numberOfLines={2}
                     >
                       {t.description}
@@ -313,7 +311,7 @@ export default function DashboardScreen({
           </ScrollView>
         </View>
 
-        {/* Right rail - Stats (stacked vertically) */}
+        {/* Right rail - Stats */}
         <View style={{ width: 280, gap: 12 }}>
           {[
             { label: "Due Today", value: stats.dueToday },
@@ -347,6 +345,10 @@ export default function DashboardScreen({
         onSave={handleModalSave}
         onDelete={handleModalDelete}
         teamMode={mode === "team"}
+        teamMembers={teamMembers}
+        currentUserId={currentUserId}
+        onAssign={handleAssign}
+        onUnassign={handleUnassign}
       />
     </View>
   );

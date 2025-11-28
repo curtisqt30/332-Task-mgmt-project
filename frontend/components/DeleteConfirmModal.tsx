@@ -40,19 +40,6 @@ export default function DeleteConfirmModal({
           shadowRadius: 12,
           elevation: 8,
         }}>
-          {/* Icon */}
-          <View style={{
-            width: 48,
-            height: 48,
-            borderRadius: 24,
-            backgroundColor: "#FEE2E2",
-            alignItems: "center",
-            justifyContent: "center",
-            marginBottom: 16,
-            alignSelf: "center",
-          }}>
-            <Text style={{ fontSize: 24 }}>⚠️</Text>
-          </View>
 
           {/* Title */}
           <Text style={{
@@ -73,7 +60,6 @@ export default function DeleteConfirmModal({
             marginBottom: 24,
             lineHeight: 22,
           }}>
-            Are you sure you want to delete "{taskTitle}"? This action cannot be undone.
           </Text>
 
           {/* Buttons */}
